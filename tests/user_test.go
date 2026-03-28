@@ -3,7 +3,6 @@ package tests
 import (
 	"go-auth-app/controllers"
 	"go-auth-app/middleware"
-	"go-auth-app/models"
 	"go-auth-app/services"
 	"go-auth-app/tests/mocks"
 	"net/http"
@@ -13,40 +12,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 )
-
-func TestProfile(t *testing.T) {
-	mockRepo := &mocks.MockUserRepo{
-		User: &models.User{
-			Name:  "Test",
-			Email: "profile@mail.com",
-			Role:  "user",
-		},
-	}
-
-	userService := &services.UserService{
-		UserRepo: mockRepo,
-	}
-
-	controller := controllers.UserController{
-		UserService: userService,
-	}
-
-	gin.SetMode(gin.TestMode)
-	r := gin.Default()
-
-	// inject user_id manual (simulate middleware)
-	r.GET("/profile", func(c *gin.Context) {
-		c.Set("user_id", uint(1))
-		controller.Profile(c)
-	})
-
-	req, _ := http.NewRequest("GET", "/profile", nil)
-
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-
-	assert.Equal(t, 200, w.Code)
-}
 
 func TestAdminForbidden(t *testing.T) {
 	mockRepo := new(mocks.MockUserRepo)

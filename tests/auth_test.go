@@ -237,3 +237,37 @@ func TestLogin_InvalidInput(t *testing.T) {
 	// 400 validation failed
 	assert.Equal(t, 400, w.Code)
 }
+
+func TestProfile(t *testing.T) {
+	mockRepo := &mocks.MockUserRepo{
+		User: &models.User{
+			Name:  "Test",
+			Email: "profile@mail.com",
+			Role:  "user",
+		},
+	}
+
+	authService := &services.AuthService{
+		UserRepo: mockRepo,
+	}
+
+	controller := controllers.AuthController{
+		AuthService: authService,
+	}
+
+	gin.SetMode(gin.TestMode)
+	r := gin.Default()
+
+	// inject user_id manual (simulate middleware)
+	r.GET("/profile", func(c *gin.Context) {
+		c.Set("user_id", uint(1))
+		controller.Profile(c)
+	})
+
+	req, _ := http.NewRequest("GET", "/profile", nil)
+
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, 200, w.Code)
+}

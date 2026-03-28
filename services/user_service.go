@@ -16,17 +16,3 @@ func (s *UserService) GetAllUsers(page, limit int, search, role string) ([]model
 func (s *UserService) DeleteUser(id uint) error {
 	return s.UserRepo.Delete(id)
 }
-
-func (s *UserService) GetProfile(userID uint) (*models.User, error) {
-	user, err := s.UserRepo.FindByID(userID)
-	if err != nil {
-		return nil, err
-	}
-
-	// contoh future logic
-	// - audit log
-	// - enrich data
-	// - cache
-
-	return user, nil
-}

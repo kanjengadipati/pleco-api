@@ -4,6 +4,8 @@ import (
 	"go-auth-app/dto"
 	"go-auth-app/models"
 	"go-auth-app/services"
+	"log"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -57,30 +59,31 @@ func (a *AuthController) Login(c *gin.Context) {
 }
 
 func (a *AuthController) Logout(c *gin.Context) {
-	userIDVal, exists := c.Get("user_id")
+
+	// ✅ ambil user dari middleware
+	userID, exists := c.Get("user_id")
 	if !exists {
-		c.JSON(401, gin.H{"error": "Unauthorized"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
 
-	userID := userIDVal.(uint)
-
-	var body struct {
-		RefreshToken string `json:"refresh_token"`
-	}
-
-	if err := c.ShouldBindJSON(&body); err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
+	// ✅ ambil device id dari header
+	deviceID := c.GetHeader("X-Device-ID")
+	if deviceID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "device id required"})
 		return
 	}
 
-	err := a.AuthService.Logout(userID, body.RefreshToken)
+	// ✅ call service
+	err := a.AuthService.Logout(userID.(uint), deviceID)
 	if err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(200, gin.H{"message": "Logged out successfully"})
+	c.JSON(http.StatusOK, gin.H{
+		"message": "logout success",
+	})
 }
 
 func (a *AuthController) RefreshToken(c *gin.Context) {
@@ -93,6 +96,8 @@ func (a *AuthController) RefreshToken(c *gin.Context) {
 		return
 	}
 
+	log.Println("refresh token", body.RefreshToken)
+
 	tokens, err := a.AuthService.RefreshToken(body.RefreshToken)
 	if err != nil {
 		c.JSON(401, gin.H{"error": err.Error()})
@@ -100,4 +105,28 @@ func (a *AuthController) RefreshToken(c *gin.Context) {
 	}
 
 	c.JSON(200, tokens)
+}
+
+func (a *AuthController) Profile(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+
+	if !exists {
+		c.JSON(401, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	// ambil user dari repository
+	user, err := a.AuthService.GetProfile(userID.(uint))
+	if err != nil {
+		c.JSON(404, gin.H{"error": "User not found"})
+		return
+	}
+
+	// response (hindari kirim password!)
+	c.JSON(200, gin.H{
+		"id":    user.ID,
+		"name":  user.Name,
+		"email": user.Email,
+		"role":  user.Role,
+	})
 }

@@ -17,9 +17,12 @@ func SetupRoutes(router *gin.Engine) {
 
 	userRepo := &repositories.UserRepoDB{}
 
+	refreshTokenRepo := repositories.NewRefreshTokenRepo()
+
 	authService := &services.AuthService{
-		UserRepo: repo,
-		JWT:      jwtService,
+		UserRepo:         repo,
+		JWT:              jwtService,
+		RefreshTokenRepo: refreshTokenRepo,
 	}
 
 	userService := &services.UserService{
@@ -49,7 +52,7 @@ func SetupRoutes(router *gin.Engine) {
 	protected := api.Group("/")
 	protected.Use(middleware.AuthMiddleware(jwtService))
 
-	protected.GET("/profile", userController.Profile)
+	protected.GET("/profile", authController.Profile)
 	protected.POST("/logout", authController.Logout)
 
 	// ========================

@@ -71,27 +71,3 @@ func (u *UserController) DeleteUser(c *gin.Context) {
 
 	c.JSON(200, gin.H{"message": "Deleted"})
 }
-
-func (a *UserController) Profile(c *gin.Context) {
-	userID, exists := c.Get("user_id")
-
-	if !exists {
-		c.JSON(401, gin.H{"error": "Unauthorized"})
-		return
-	}
-
-	// ambil user dari repository
-	user, err := a.UserService.GetProfile(userID.(uint))
-	if err != nil {
-		c.JSON(404, gin.H{"error": "User not found"})
-		return
-	}
-
-	// response (hindari kirim password!)
-	c.JSON(200, gin.H{
-		"id":    user.ID,
-		"name":  user.Name,
-		"email": user.Email,
-		"role":  user.Role,
-	})
-}

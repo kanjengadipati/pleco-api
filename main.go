@@ -2,6 +2,7 @@ package main
 
 import (
 	"go-auth-app/config"
+	"go-auth-app/models"
 	"go-auth-app/routes"
 
 	"github.com/gin-gonic/gin"
@@ -13,6 +14,8 @@ func main() {
 
 	// Connect DB
 	config.ConnectDB()
+
+	config.DB.AutoMigrate(&models.RefreshToken{})
 
 	// Seed admin
 	config.SeedAdmin()

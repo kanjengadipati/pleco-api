@@ -15,10 +15,11 @@ func NewJWTService(secret []byte) *JWTService {
 	return &JWTService{Secret: secret}
 }
 
-func (j *JWTService) GenerateToken(userID uint, role string, duration time.Duration) (string, error) {
+func (j *JWTService) GenerateToken(userID uint, role string, duration time.Duration, tokenType string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_id": userID,
 		"role":    role,
+		"type":    tokenType,
 		"exp":     time.Now().Add(duration).Unix(),
 	})
 
@@ -27,16 +28,31 @@ func (j *JWTService) GenerateToken(userID uint, role string, duration time.Durat
 
 func (j *JWTService) ValidateToken(tokenString string) (jwt.MapClaims, error) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		// Validate that the signing method is HMAC (HS256)
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, errors.New("unexpected signing method")
+		}
 		return j.Secret, nil
-	})
+	}, jwt.WithLeeway(10*time.Second)) // allow small clock drift
 
-	if err != nil || !token.Valid {
+	if err != nil {
+		return nil, err
+	}
+
+	if !token.Valid {
 		return nil, errors.New("invalid token")
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
 		return nil, errors.New("invalid claims")
+	}
+
+	// check for exp manually if needed
+	if exp, ok := claims["exp"].(float64); ok {
+		if int64(exp) < time.Now().Unix() {
+			return nil, errors.New("token expired")
+		}
 	}
 
 	return claims, nil
