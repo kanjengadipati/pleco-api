@@ -195,6 +195,36 @@ func (_m *AuthService) ResetPassword(token string, newPassword string) error {
 	return r0
 }
 
+// SocialLogin provides a mock function with given fields: provider, idToken, deviceID, userAgent, ipAddress
+func (_m *AuthService) SocialLogin(provider string, idToken string, deviceID string, userAgent string, ipAddress string) (*services.AuthTokens, error) {
+	ret := _m.Called(provider, idToken, deviceID, userAgent, ipAddress)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SocialLogin")
+	}
+
+	var r0 *services.AuthTokens
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, string, string, string, string) (*services.AuthTokens, error)); ok {
+		return rf(provider, idToken, deviceID, userAgent, ipAddress)
+	}
+	if rf, ok := ret.Get(0).(func(string, string, string, string, string) *services.AuthTokens); ok {
+		r0 = rf(provider, idToken, deviceID, userAgent, ipAddress)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*services.AuthTokens)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string, string, string, string, string) error); ok {
+		r1 = rf(provider, idToken, deviceID, userAgent, ipAddress)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // VerifyEmail provides a mock function with given fields: token
 func (_m *AuthService) VerifyEmail(token string) error {
 	ret := _m.Called(token)

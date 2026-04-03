@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"log"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
+	"google.golang.org/api/idtoken"
 )
 
 type AuthService interface {
@@ -24,12 +26,14 @@ type AuthService interface {
 	VerifyEmail(token string) error
 	ForgotPassword(email string) error
 	ResetPassword(token string, newPassword string) error
+	SocialLogin(provider string, idToken string, deviceID, userAgent, ipAddress string) (*AuthTokens, error)
 }
 
 type authService struct {
 	UserRepo              repositories.UserRepository
 	RefreshTokenRepo      repositories.RefreshTokenRepository
 	EmailVerificationRepo repositories.EmailVerificationTokenRepository
+	SocialRepo            repositories.SocialAccountRepository
 	JWT                   *JWTService
 	EmailSvc              EmailService
 }
@@ -50,6 +54,7 @@ func NewAuthService(
 	userRepo repositories.UserRepository,
 	refreshRepo repositories.RefreshTokenRepository,
 	emailRepo repositories.EmailVerificationTokenRepository,
+	socialRepo repositories.SocialAccountRepository,
 	jwt *JWTService,
 	emailSvc EmailService,
 ) AuthService {
@@ -57,6 +62,7 @@ func NewAuthService(
 		UserRepo:              userRepo,
 		RefreshTokenRepo:      refreshRepo,
 		EmailVerificationRepo: emailRepo,
+		SocialRepo:            socialRepo,
 		JWT:                   jwt,
 		EmailSvc:              emailSvc,
 	}
@@ -356,4 +362,120 @@ func (s *authService) generateResetToken(userID uint, email string) (string, err
 	}
 	// Use the JWT service to generate a token with 15 min expiry and a special purpose
 	return s.JWT.GenerateCustomClaimsToken(claims, 15*time.Minute)
+}
+
+func (s *authService) SocialLogin(provider string, idToken string, deviceID, userAgent, ipAddress string) (*AuthTokens, error) {
+	var email, providerID, name, avatar string
+
+	// =========================
+	// 1. VERIFY PROVIDER TOKEN
+	// =========================
+	switch provider {
+	case "google":
+		payload, err := idtoken.Validate(context.Background(), idToken, "")
+		if err != nil {
+			return nil, errors.New("invalid google token")
+		}
+
+		email, _ = payload.Claims["email"].(string)
+		name, _ = payload.Claims["name"].(string)
+		providerID = payload.Subject
+		avatar, _ = payload.Claims["picture"].(string)
+
+		emailVerified, ok := payload.Claims["email_verified"].(bool)
+		if !ok || !emailVerified {
+			return nil, errors.New("email not verified by google")
+		}
+
+	default:
+		return nil, errors.New("unsupported provider")
+	}
+
+	// 🔥 debug (optional)
+	log.Println("EMAIL:", email)
+	log.Println("PROVIDER:", provider)
+	log.Println("PROVIDER_ID:", providerID)
+
+	if providerID == "" {
+		return nil, errors.New("invalid provider id")
+	}
+
+	// =========================
+	// 2. FIND OR CREATE USER
+	// =========================
+	user, err := s.UserRepo.FindByEmail(email)
+
+	if err != nil {
+		// register baru
+		user = &models.User{
+			Email:      email,
+			Name:       name,
+			IsVerified: true,
+		}
+
+		if err := s.UserRepo.Create(user); err != nil {
+			return nil, err
+		}
+	}
+
+	// =========================
+	// 3. HANDLE SOCIAL ACCOUNT
+	// =========================
+	social, err := s.SocialRepo.FindByProvider(provider, providerID)
+	if err != nil {
+		return nil, err
+	}
+
+	if social != nil {
+		// sudah ada
+		if social.UserID != user.ID {
+			return nil, errors.New("social account already linked to another user")
+		}
+	} else {
+		// 🔥 BELUM ADA → CREATE
+		newSocial := &models.SocialAccount{
+			UserID:     user.ID,
+			Provider:   provider,
+			ProviderID: providerID,
+			AvatarURL:  avatar,
+		}
+		log.Println("CREATING SOCIAL ACCOUNT...")
+		if err := s.SocialRepo.Create(newSocial); err != nil {
+			log.Println("CREATE ERROR:", err)
+			return nil, err
+		}
+	}
+
+	// =========================
+	// 4. GENERATE TOKENS
+	// =========================
+	accessToken, err := s.JWT.GenerateToken(user.ID, user.Role, 15*time.Minute, TokenAccess)
+	if err != nil {
+		return nil, err
+	}
+
+	refreshToken, err := s.JWT.GenerateToken(user.ID, user.Role, 7*24*time.Hour, TokenRefresh)
+	if err != nil {
+		return nil, err
+	}
+
+	tokenHash := utils.HashToken(refreshToken)
+
+	refreshTokenModel := &models.RefreshToken{
+		UserID:    user.ID,
+		TokenHash: tokenHash,
+		DeviceID:  deviceID,
+		UserAgent: userAgent,
+		IPAddress: ipAddress,
+		ExpiredAt: time.Now().Add(7 * 24 * time.Hour),
+	}
+
+	if err := s.RefreshTokenRepo.Save(refreshTokenModel); err != nil {
+		return nil, err
+	}
+
+	return &AuthTokens{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}, nil
 }

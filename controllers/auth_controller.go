@@ -192,3 +192,27 @@ func (a *AuthController) ResetPassword(c *gin.Context) {
 
 	c.JSON(200, gin.H{"message": "password updated"})
 }
+
+func (a *AuthController) SocialLogin(c *gin.Context) {
+	var body struct {
+		Provider string `json:"provider"`
+		Token    string `json:"id_token"`
+	}
+
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(400, gin.H{"error": "invalid request"})
+		return
+	}
+
+	deviceID := "web"
+	userAgent := c.GetHeader("User-Agent")
+	ip := c.ClientIP()
+
+	tokens, err := a.AuthService.SocialLogin(body.Provider, body.Token, deviceID, userAgent, ip)
+	if err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, tokens)
+}

@@ -14,6 +14,7 @@ func SetupRoutes(router *gin.Engine) {
 	userRepo := &repositories.UserRepoDB{}
 	refreshTokenRepo := repositories.NewRefreshTokenRepo()
 	emailVerificationRepo := repositories.NewEmailVerificationTokenRepo()
+	socialRepo := repositories.NewSocialAccountRepository()
 	jwtService := services.NewJWTService(config.JWTSecret)
 	emailSvc := services.NewEmailService()
 
@@ -21,6 +22,7 @@ func SetupRoutes(router *gin.Engine) {
 		userRepo,
 		refreshTokenRepo,
 		emailVerificationRepo,
+		socialRepo,
 		jwtService,
 		emailSvc,
 	)
@@ -37,25 +39,25 @@ func SetupRoutes(router *gin.Engine) {
 		UserService: userService,
 	}
 
-	api := router.Group("/api")
+	auth := router.Group("/auth")
 
 	// ========================
 	// 🔓 PUBLIC ROUTES
 	// ========================
-	api.POST("/register", authController.Register)
-	api.POST("/login", authController.Login)
-	api.POST("/refresh", authController.RefreshToken)
-	api.GET("/verify", authController.VerifyEmail)
-	api.GET("/resend-verification", authController.ResendVerification)
-	api.POST("/forgot-password", authController.ForgotPassword)
-	api.POST("/reset-password", authController.ResetPassword)
+	auth.POST("/register", authController.Register)
+	auth.POST("/login", authController.Login)
+	auth.POST("/refresh", authController.RefreshToken)
+	auth.GET("/verify", authController.VerifyEmail)
+	auth.GET("/resend-verification", authController.ResendVerification)
+	auth.POST("/forgot-password", authController.ForgotPassword)
+	auth.POST("/reset-password", authController.ResetPassword)
+	auth.POST("/social-login", authController.SocialLogin)
 
 	// ========================
 	// 🔐 PROTECTED ROUTES
 	// ========================
-	protected := api.Group("/")
+	protected := auth.Group("/")
 	protected.Use(middleware.AuthMiddleware(jwtService))
-
 	protected.GET("/profile", authController.Profile)
 	protected.POST("/logout", authController.Logout)
 
@@ -64,7 +66,6 @@ func SetupRoutes(router *gin.Engine) {
 	// ========================
 	admin := protected.Group("/admin")
 	admin.Use(middleware.AdminOnly())
-
 	admin.GET("/users", userController.GetAllUsers)
 	admin.DELETE("/users/:id", userController.DeleteUser)
 }

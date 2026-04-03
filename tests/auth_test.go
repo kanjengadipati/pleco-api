@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"errors"
 	"go-auth-app/controllers"
 	"go-auth-app/models"
 	"go-auth-app/services"
@@ -105,7 +106,6 @@ func TestLogout_Success(t *testing.T) {
 	req.Header.Set("X-Device-ID", "web")
 	c.Request = req
 
-	// Make sure user_id key and value type match requirements
 	c.Set("user_id", uint(1))
 
 	controller.Logout(c)
@@ -259,4 +259,75 @@ func TestResetPassword_Success(t *testing.T) {
 	controller.ResetPassword(c)
 
 	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestSocialLogin_Success(t *testing.T) {
+	mockService := new(mocks.AuthService)
+
+	controller := controllers.AuthController{
+		AuthService: mockService,
+	}
+
+	body := `{"provider":"google","id_token":"validGoogleIdToken","device_id":"browser1","user_agent":"Mozilla/5.0","ip_address":"127.0.0.1"}`
+
+	mockService.
+		On("SocialLogin",
+			"google",
+			mock.Anything,
+			mock.Anything,
+			mock.Anything,
+			mock.Anything,
+		).
+		Return(&services.AuthTokens{
+			AccessToken:  "access_abc",
+			RefreshToken: "refresh_xyz",
+		}, nil)
+
+	c, w := setupTest()
+
+	req := httptest.NewRequest(http.MethodPost, "/social-login", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	c.Request = req
+
+	controller.SocialLogin(c)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	mockService.AssertExpectations(t)
+}
+
+func TestSocialLogin_Failure(t *testing.T) {
+	mockService := new(mocks.AuthService)
+
+	controller := controllers.AuthController{
+		AuthService: mockService,
+	}
+
+	body := `{
+		"provider": "google",
+		"id_token": "invalidToken",
+		"device_id": "browser1",
+		"user_agent": "Mozilla/5.0",
+		"ip_address": "127.0.0.1"
+	}`
+
+	mockService.
+		On("SocialLogin",
+			"google",
+			mock.Anything,
+			mock.Anything,
+			mock.Anything,
+			mock.Anything,
+		).
+		Return(nil, errors.New("invalid google token"))
+
+	c, w := setupTest()
+
+	req := httptest.NewRequest(http.MethodPost, "/social-login", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	c.Request = req
+
+	controller.SocialLogin(c)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	mockService.AssertExpectations(t)
 }

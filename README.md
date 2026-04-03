@@ -1,23 +1,42 @@
 # Go Auth App
 
 A robust, modular authentication API built with Go and Gin.  
-Features secure user registration, login, JWT authentication, refresh logic, logout, simple role-based access control (RBAC), and now **email verification** for account activation.  
-Designed for easy customization, strong testing, and rapid startup.
+Features secure user registration, email verification, JWT authentication (with refresh/rotation), logout, password reset, role-based access control (RBAC), profile & admin endpoints, and strong test coverage.  
+Designed for rapid customization, maintainability, and solid testing.
 
-## 🚀 Features
+## 🚀 Features (Grouped by Area)
 
-- User registration and login endpoints
-- Email verification: users receive a verification link after registering
-- Secure password hashing with bcrypt
-- JWT-based authentication with support for access and refresh tokens
-- Auto-rotation & invalidation of used/expired refresh tokens
-- Server-side logout: deletes/invalidate refresh tokens (not just JWT expiry)
-- Middleware-protected endpoints (e.g., `/profile`, `/users`)
-- Simple, extensible role-based guards (admin/user)
-- Clean architecture: repositories, models, controllers, services
-- Extensive unit tests in `/tests` (controllers, services, repositories)
-- Mocks for business logic/testing
-- `.env` support for configuration
+### User Authentication
+- **Register:** Secure new user registration with immediate email verification flow
+- **Login:** Authenticate users (only after email verified)
+- **JWT Auth:** Issue, validate, and rotate access/refresh tokens for each login
+- **Logout:** Server-side token invalidation (refresh token blacklisting)
+
+### Email Verification & Account Activation
+- **Verification flow:** Sends verification email on register (`/verify-email?token=...`)
+- **Resend Verification:** Endpoint to resend verification email
+
+### Password Management
+- **Forgot Password:** Request a password reset email if forgotten
+- **Reset Password:** Reset password via secure emailed token
+- **Secure password hashing:** All user passwords with bcrypt
+
+### Token Management & Security
+- **Token rotation:** Refresh token invalidation/rotation (prevents reuse after logout/refresh)
+- **Access/Refresh tokens:** Short-lived JWT access, long-lived refresh
+- **Token required for protected endpoints**
+
+### User & Admin Operations
+- **Profile:** Authenticated users can get their own profile details
+- **User listing:** Admins can list/view all users (`/users`), RBAC enforced
+- **Role-based guards:** Simple and extensible role checks (user/admin)
+
+### Architecture & Developer UX
+- **Clean, modular codebase:** Controllers, services, repos, DTOs, middleware
+- **.env file support:** Easy environment config for DB, mail, JWT secrets
+- **Mocks and tests:** Full coverage for core features
+
+---
 
 ## 🏁 Quickstart
 
@@ -32,16 +51,17 @@ Designed for easy customization, strong testing, and rapid startup.
 git clone https://github.com/your-username/go-auth-app.git
 cd go-auth-app
 go mod tidy
-cp .env.example .env    # Copy and edit .env for your DB/email/JWT config
+cp .env.example .env   # Edit .env with your DB, JWT, and email config
 ```
 
 ### Configuration
 
-Configure your `.env` file:
-- `DATABASE_URL` — Postgres connection string
-- `JWT_SECRET` — your secret for JWT signing
-- `PORT` — API server port (default: 8080)
-- `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USER`, `EMAIL_PASS`, `EMAIL_FROM` — for verification emails
+Key `.env` variables:
+- `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_SSLMODE` — Postgres database connection settings
+- `JWT_SECRET` — secret key for signing JWTs
+- `ADMIN_EMAIL`, `ADMIN_PASSWORD` — initial admin user credentials
+- `SENDGRID_API_KEY` — SendGrid API key for sending emails
+- `SENDGRID_EMAIL` — email address used as sender for outgoing mail
 
 ### Running the Server
 
@@ -49,88 +69,112 @@ Configure your `.env` file:
 go run main.go
 ```
 
-API available at: [http://localhost:8080](http://localhost:8080)
+API is available at: [http://localhost:8080](http://localhost:8080)
 
-## 📚 API Endpoints Overview
+---
 
-- `POST /register` — Register a new user  
-  **Body:**
+## 📚 API Endpoints Grouped by Feature
+
+### User Registration & Email Verification
+
+- **POST `/register`** — Register a new user  
+  **Request:**
   ```json
-  {
-    "name": "Alice Smith",
-    "email": "alice@email.com",
-    "password": "supersecure"
-  }
+  { "name": "Alice", "email": "alice@email.com", "password": "supersecure" }
   ```
   - On success: User receives a verification email.
 
-- `GET /verify-email?token=...` — Verify user’s email  
-  - User clicks the link sent via email to activate the account.
+- **GET `/verify-email?token=...`** — Verify user's email  
+  - Link sent in the verification email. Activates account.
 
-- `POST /login` — Authenticate and get tokens (only for verified users)  
-  **Body:**
+- **POST `/resend`** — Resend verification email  
+  **Request:**
   ```json
-  {
-    "email": "alice@email.com",
-    "password": "supersecure"
-  }
-  ```
-  **Success Response:**
-  ```json
-  {
-    "access_token": "JWT...",
-    "refresh_token": "..."
-  }
+  { "email": "alice@email.com" }
   ```
 
-- `POST /refresh-token` — Get new tokens using a valid refresh token  
-  **Body:**
+---
+
+### Authentication & Token Management
+
+- **POST `/login`** — Log in (only after email verified)  
+  **Request:**
   ```json
-  {
-    "refresh_token": "existing_refresh_token"
-  }
+  { "email": "alice@email.com", "password": "supersecure" }
   ```
-  - Returns new `access_token` and `refresh_token`.
-  - Invalidates the previous refresh token for security (rotation).
+  **Response:**
+  ```json
+  { "access_token": "JWT...", "refresh_token": "..." }
+  ```
 
-- `POST /logout` — Log out and invalidate a refresh token  
-  - **Requires:**  
-    - `Authorization: Bearer <access_token>`
-    - **Body:**
-    ```json
-    {
-      "refresh_token": "the_token_to_invalidate"
-    }
-    ```
+- **POST `/refresh-token`** — Refresh tokens  
+  **Request:**
+  ```json
+  { "refresh_token": "existing_refresh_token" }
+  ```
+  *Returns new pair, invalidates previous refresh token.*
 
-- `GET /profile` — Get current user’s profile  
-  - **Requires:** valid `Authorization: Bearer <access_token>`
+- **POST `/logout`** — Invalidate issued refresh token  
+  **Headers:** `Authorization: Bearer <access_token>`  
+  **Request:**
+  ```json
+  { "refresh_token": "the_token_to_invalidate" }
+  ```
 
-- `GET /users` — List all users *(admin only)*  
-  - **Requires:** admin's authorization header
+---
+
+### Password Reset
+
+- **POST `/forgot-password`** — Send a password reset email  
+  **Request:**
+  ```json
+  { "email": "alice@email.com" }
+  ```
+
+- **POST `/reset-password`** — Reset forgotten password  
+  **Request:**
+  ```json
+  { "token": "<password_reset_token>", "new_password": "yourNewPassword" }
+  ```
+
+---
+
+### User & Admin
+
+- **GET `/profile`** — Get current logged-in user's profile  
+  - **Requires:** valid access token
+
+- **GET `/users`** — List all users *(admin only)*  
+  - **Requires:** admin's access token (`Authorization: Bearer ...`)
+
+---
 
 ## 🧪 Running Tests
 
 ```sh
 go test ./tests/...
 ```
-- Dedicated unit and isolation tests for controllers, services, repositories using mocks.
-- Tests cover registration, login, failed login, token lifecycles, role guards, email verification logic, and more.
+- Extensive coverage for registration, login, token lifecycles, role guards, verification logic, password reset, and more.
+- Uses mocks for services and repositories, isolating business logic.
+
+---
 
 ## 📂 Project Structure
 
 ```
 .
-├── controllers/         # HTTP handlers for API endpoints
-├── dto/                 # Request/response data (DTOs)
-├── models/              # GORM models (User, RefreshToken, etc.)
-├── repositories/        # Interface & DB logic
-├── services/            # Business logic (authentication, user, email, etc.)
-├── middleware/          # JWT & RBAC middleware
-├── config/              # Env, DB, JWT, and email settings
-├── tests/               # Unit & mock tests
-└── main.go              # Application entry
+├── controllers/     # HTTP handlers for API endpoints
+├── dto/            # Request/response objects and validation
+├── models/         # GORM models (User, Token, etc.)
+├── repositories/   # Data interface & logic
+├── services/       # Business logic (auth, user, mail, etc.)
+├── middleware/     # JWT & RBAC middleware
+├── config/         # Environment, DB, mail, JWT settings
+├── tests/          # Unit/mocks for all features
+└── main.go         # Entry point
 ```
+
+---
 
 ## 🤝 Contributing
 

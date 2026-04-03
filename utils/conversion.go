@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"go-auth-app/dto"
 	"go-auth-app/models"
 
@@ -31,5 +32,31 @@ func DtoToUser(input *dto.RegisterRequest) models.User {
 		Name:  input.Name,
 		Email: input.Email,
 		Role:  "user",
+	}
+}
+
+// GetUserIDFromToken extracts the user_id as uint from a JWT claims map.
+func GetUserIDFromToken(claims map[string]interface{}) (uint, bool) {
+	val, exists := claims["user_id"]
+	if !exists {
+		return 0, false
+	}
+	switch v := val.(type) {
+	case uint:
+		return v, true
+	case int:
+		return uint(v), true
+	case float64:
+		return uint(v), true
+	case string:
+		// Attempt to parse uint from string
+		var id uint
+		_, err := fmt.Sscanf(v, "%d", &id)
+		if err == nil {
+			return id, true
+		}
+		return 0, false
+	default:
+		return 0, false
 	}
 }
