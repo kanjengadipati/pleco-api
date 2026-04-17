@@ -1,41 +1,54 @@
 package config
 
 import (
-	"fmt"
+	"context"
+	"database/sql"
 	"log"
+	"net"
+	"os"
 	"time"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 var DB *gorm.DB
 
-func DatabaseURL() string {
-	if databaseURL := GetEnv("DATABASE_URL", ""); databaseURL != "" {
-		return databaseURL
+func ConnectDB() *gorm.DB {
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		log.Fatal("❌ DATABASE_URL is not set")
 	}
 
-	return fmt.Sprintf(
-		"host=%s user=%s password=%s dbname=%s port=%s sslmode=%s",
-		GetEnv("DB_HOST", "db"),
-		GetEnv("DB_USER", "postgres"),
-		GetEnv("DB_PASSWORD", "password"),
-		GetEnv("DB_NAME", "auth_db"),
-		GetEnv("DB_PORT", "5432"),
-		GetEnv("DB_SSLMODE", "disable"),
-	)
-}
+	// 🚀 Force IPv4 by overriding default dialer
+	dialer := &net.Dialer{
+		Timeout: 5 * time.Second,
+	}
 
-func ConnectDB() *gorm.DB {
-	var database *gorm.DB
+	net.DefaultResolver = &net.Resolver{
+		PreferGo: true,
+		Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+			return dialer.DialContext(ctx, "tcp4", address)
+		},
+	}
+
+	var db *gorm.DB
 	var err error
 
-	dsn := DatabaseURL()
-
-	// retry mechanism
 	for i := 0; i < 10; i++ {
-		database, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
+		sqlDB, err2 := sql.Open("pgx", dsn)
+		if err2 != nil {
+			log.Println("⏳ Opening DB failed:", err2)
+			time.Sleep(2 * time.Second)
+			continue
+		}
+
+		db, err = gorm.Open(postgres.New(postgres.Config{
+			Conn: sqlDB,
+		}), &gorm.Config{})
+
 		if err == nil {
 			log.Println("✅ Database connected")
 			break
@@ -49,8 +62,12 @@ func ConnectDB() *gorm.DB {
 		log.Fatalf("❌ DB connection failed after retries: %v", err)
 	}
 
-	// optional: tetap simpan global (biar backward compatible)
-	DB = database
+	// ✅ Connection pool config
+	sqlDB, _ := db.DB()
+	sqlDB.SetMaxOpenConns(5)
+	sqlDB.SetMaxIdleConns(2)
+	sqlDB.SetConnMaxLifetime(30 * time.Minute)
 
-	return database
+	DB = db
+	return db
 }
