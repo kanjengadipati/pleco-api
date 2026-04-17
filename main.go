@@ -1,6 +1,7 @@
 package main
 
 import (
+	"go-auth-app/appsetup"
 	"go-auth-app/config"
 	"go-auth-app/modules/auth"
 	"go-auth-app/modules/user"
@@ -16,6 +17,7 @@ func initApp() *gin.Engine {
 
 	// Connect DB
 	config.ConnectDB()
+	appsetup.RunStartupTasks()
 
 	router := gin.Default()
 	api := router.Group("/")

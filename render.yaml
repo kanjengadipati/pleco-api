@@ -9,6 +9,10 @@ services:
     envVars:
       - key: DATABASE_URL
         sync: false
+      - key: AUTO_RUN_MIGRATIONS
+        value: "true"
+      - key: AUTO_RUN_SEEDS
+        value: "true"
       - key: JWT_SECRET
         sync: false
       - key: SENDGRID_API_KEY
