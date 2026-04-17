@@ -1,20 +1,14 @@
 package routes
 
 import (
-	"go-auth-app/modules/auth"
-	"go-auth-app/modules/user"
+	"go-auth-app/appsetup"
+	"go-auth-app/config"
 
 	"github.com/gin-gonic/gin"
+	"go-auth-app/services"
+	"gorm.io/gorm"
 )
 
-func SetupRoutes(router *gin.Engine) {
-	userModule := user.BuildModule()
-	authModule := auth.BuildModule(userModule.Service)
-
-	auth.SetupRoutes(router.Group("/"), authModule.Handler)
-	user.SetupRoutes(router.Group("/"), userModule.Handler)
-
-	router.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{"status": "ok"})
-	})
+func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtService *services.JWTService) {
+	appsetup.RegisterRoutes(router, db, cfg, jwtService)
 }

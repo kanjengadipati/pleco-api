@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"log"
 	"net"
-	"os"
 	"time"
 
 	"gorm.io/driver/postgres"
@@ -14,14 +13,11 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-var DB *gorm.DB
-
 func DatabaseURL() string {
-	return os.Getenv("DATABASE_URL")
+	return GetEnv("DATABASE_URL", "")
 }
 
-func ConnectDB() *gorm.DB {
-	dsn := DatabaseURL()
+func ConnectDB(dsn string) *gorm.DB {
 	if dsn == "" {
 		log.Fatal("❌ DATABASE_URL is not set")
 	}
@@ -72,6 +68,5 @@ func ConnectDB() *gorm.DB {
 	sqlDB.SetMaxIdleConns(2)
 	sqlDB.SetConnMaxLifetime(30 * time.Minute)
 
-	DB = db
 	return db
 }

@@ -1,21 +1,24 @@
 package auth
 
-import userModule "go-auth-app/modules/user"
+import (
+	"go-auth-app/config"
+	userModule "go-auth-app/modules/user"
+	"go-auth-app/services"
+
+	"gorm.io/gorm"
+)
 
 type Module struct {
-	Repository AuthRepository
-	Service    AuthService
-	Handler    *AuthHandler
+	Service AuthService
+	Handler *AuthHandler
 }
 
-func BuildModule(userService *userModule.Service) *Module {
-	repository := NewRepository(nil)
-	service := NewService(repository, userService)
+func BuildModule(db *gorm.DB, cfg config.AppConfig, userService *userModule.Service, jwtService *services.JWTService) *Module {
+	service := NewService(db, cfg, userService, jwtService)
 	handler := NewHandler(service)
 
 	return &Module{
-		Repository: repository,
-		Service:    service,
-		Handler:    handler,
+		Service: service,
+		Handler: handler,
 	}
 }

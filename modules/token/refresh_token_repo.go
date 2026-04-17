@@ -1,6 +1,6 @@
 package token
 
-import "go-auth-app/config"
+import "gorm.io/gorm"
 
 type RefreshTokenRepository interface {
 	Save(token *RefreshToken) error
@@ -10,21 +10,23 @@ type RefreshTokenRepository interface {
 	DeleteByUser(userID uint) error
 }
 
-type GormRefreshTokenRepository struct{}
+type GormRefreshTokenRepository struct {
+	db *gorm.DB
+}
 
 var _ RefreshTokenRepository = (*GormRefreshTokenRepository)(nil)
 
-func NewRefreshTokenRepository() RefreshTokenRepository {
-	return &GormRefreshTokenRepository{}
+func NewRefreshTokenRepository(db *gorm.DB) RefreshTokenRepository {
+	return &GormRefreshTokenRepository{db: db}
 }
 
 func (r *GormRefreshTokenRepository) Save(token *RefreshToken) error {
-	return config.DB.Create(token).Error
+	return r.db.Create(token).Error
 }
 
 func (r *GormRefreshTokenRepository) FindByUserAndDevice(userID uint, deviceID string) (*RefreshToken, error) {
 	var token RefreshToken
-	if err := config.DB.Where("user_id = ? AND device_id = ?", userID, deviceID).First(&token).Error; err != nil {
+	if err := r.db.Where("user_id = ? AND device_id = ?", userID, deviceID).First(&token).Error; err != nil {
 		return nil, err
 	}
 
@@ -33,14 +35,14 @@ func (r *GormRefreshTokenRepository) FindByUserAndDevice(userID uint, deviceID s
 
 func (r *GormRefreshTokenRepository) FindByUser(userID uint) ([]RefreshToken, error) {
 	var tokens []RefreshToken
-	err := config.DB.Where("user_id = ?", userID).Find(&tokens).Error
+	err := r.db.Where("user_id = ?", userID).Find(&tokens).Error
 	return tokens, err
 }
 
 func (r *GormRefreshTokenRepository) DeleteByID(id uint) error {
-	return config.DB.Delete(&RefreshToken{}, id).Error
+	return r.db.Delete(&RefreshToken{}, id).Error
 }
 
 func (r *GormRefreshTokenRepository) DeleteByUser(userID uint) error {
-	return config.DB.Where("user_id = ?", userID).Delete(&RefreshToken{}).Error
+	return r.db.Where("user_id = ?", userID).Delete(&RefreshToken{}).Error
 }

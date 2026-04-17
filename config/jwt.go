@@ -2,15 +2,16 @@ package config
 
 import (
 	"log"
-	"os"
 )
 
-var JWTSecret []byte
-
-func InitJWT() {
-	secret := os.Getenv("JWT_SECRET")
+func mustSecret(key string) []byte {
+	secret := GetEnv(key, "")
 	if secret == "" {
-		log.Fatal("JWT_SECRET is not set")
+		log.Fatalf("%s is not set", key)
 	}
-	JWTSecret = []byte(secret)
+	return []byte(secret)
+}
+
+func MustJWTSecret() []byte {
+	return mustSecret("JWT_SECRET")
 }

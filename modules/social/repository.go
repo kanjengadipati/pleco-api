@@ -3,8 +3,6 @@ package social
 import (
 	"errors"
 
-	"go-auth-app/config"
-
 	"gorm.io/gorm"
 )
 
@@ -13,12 +11,14 @@ type Repository interface {
 	FindByProvider(provider string, providerID string) (*SocialAccount, error)
 }
 
-type GormRepository struct{}
+type GormRepository struct {
+	db *gorm.DB
+}
 
 var _ Repository = (*GormRepository)(nil)
 
-func NewRepository() Repository {
-	return &GormRepository{}
+func NewRepository(db *gorm.DB) Repository {
+	return &GormRepository{db: db}
 }
 
 func (r *GormRepository) Create(socialAccount *SocialAccount) error {
@@ -26,7 +26,7 @@ func (r *GormRepository) Create(socialAccount *SocialAccount) error {
 		return errors.New("socialAccount cannot be nil")
 	}
 
-	return config.DB.Create(socialAccount).Error
+	return r.db.Create(socialAccount).Error
 }
 
 func (r *GormRepository) FindByProvider(provider, providerUserID string) (*SocialAccount, error) {
@@ -35,7 +35,7 @@ func (r *GormRepository) FindByProvider(provider, providerUserID string) (*Socia
 	}
 
 	var account SocialAccount
-	err := config.DB.Where("provider = ? AND provider_user_id = ?", provider, providerUserID).First(&account).Error
+	err := r.db.Where("provider = ? AND provider_user_id = ?", provider, providerUserID).First(&account).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
 	}

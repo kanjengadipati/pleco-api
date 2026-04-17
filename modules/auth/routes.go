@@ -1,16 +1,13 @@
 package auth
 
 import (
-	"go-auth-app/config"
 	"go-auth-app/middleware"
 	"go-auth-app/services"
 
 	"github.com/gin-gonic/gin"
 )
 
-func SetupRoutes(api *gin.RouterGroup, handler *AuthHandler) {
-	jwtService := services.NewJWTService(config.JWTSecret)
-
+func SetupRoutes(api *gin.RouterGroup, handler *AuthHandler, jwtService *services.JWTService) {
 	auth := api.Group("/auth")
 	auth.POST("/register", handler.Register)
 	auth.POST("/login", handler.Login)

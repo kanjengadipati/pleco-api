@@ -2,11 +2,11 @@ package seeds
 
 import (
 	"fmt"
+	"go-auth-app/config"
 	permissionModule "go-auth-app/modules/permission"
 	roleModule "go-auth-app/modules/role"
 	userModule "go-auth-app/modules/user"
 	"log"
-	"os"
 
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
@@ -55,7 +55,7 @@ func SeedPermissions(db *gorm.DB) map[string]permissionModule.Permission {
 	return permMap
 }
 
-func SeedAdmin(db *gorm.DB) {
+func SeedAdmin(db *gorm.DB, cfg config.AppConfig) {
 	mustHaveDB(db)
 
 	var user userModule.User
@@ -67,8 +67,8 @@ func SeedAdmin(db *gorm.DB) {
 		return
 	}
 
-	email := os.Getenv("ADMIN_EMAIL")
-	password := os.Getenv("ADMIN_PASSWORD")
+	email := cfg.AdminEmail
+	password := cfg.AdminPassword
 
 	if email == "" || password == "" {
 		log.Println("ADMIN_EMAIL or ADMIN_PASSWORD environment variables not set, skipping admin seeding")

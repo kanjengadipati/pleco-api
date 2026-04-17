@@ -1,6 +1,6 @@
 package token
 
-import "go-auth-app/config"
+import "gorm.io/gorm"
 
 type EmailVerificationRepository interface {
 	Create(token *EmailVerificationToken) error
@@ -9,21 +9,23 @@ type EmailVerificationRepository interface {
 	DeleteByUserID(userID uint) error
 }
 
-type GormEmailVerificationRepository struct{}
+type GormEmailVerificationRepository struct {
+	db *gorm.DB
+}
 
 var _ EmailVerificationRepository = (*GormEmailVerificationRepository)(nil)
 
-func NewEmailVerificationRepository() EmailVerificationRepository {
-	return &GormEmailVerificationRepository{}
+func NewEmailVerificationRepository(db *gorm.DB) EmailVerificationRepository {
+	return &GormEmailVerificationRepository{db: db}
 }
 
 func (r *GormEmailVerificationRepository) Create(token *EmailVerificationToken) error {
-	return config.DB.Create(token).Error
+	return r.db.Create(token).Error
 }
 
 func (r *GormEmailVerificationRepository) FindByToken(token string) (*EmailVerificationToken, error) {
 	var verification EmailVerificationToken
-	if err := config.DB.Where("token = ?", token).First(&verification).Error; err != nil {
+	if err := r.db.Where("token = ?", token).First(&verification).Error; err != nil {
 		return nil, err
 	}
 
@@ -31,9 +33,9 @@ func (r *GormEmailVerificationRepository) FindByToken(token string) (*EmailVerif
 }
 
 func (r *GormEmailVerificationRepository) DeleteByID(id uint) error {
-	return config.DB.Delete(&EmailVerificationToken{}, id).Error
+	return r.db.Delete(&EmailVerificationToken{}, id).Error
 }
 
 func (r *GormEmailVerificationRepository) DeleteByUserID(userID uint) error {
-	return config.DB.Where("user_id = ?", userID).Delete(&EmailVerificationToken{}).Error
+	return r.db.Where("user_id = ?", userID).Delete(&EmailVerificationToken{}).Error
 }

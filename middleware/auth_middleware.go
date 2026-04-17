@@ -16,6 +16,11 @@ func AuthMiddleware(jwtService *services.JWTService) gin.HandlerFunc {
 			return
 		}
 
+		if !strings.HasPrefix(authHeader, "Bearer ") {
+			c.AbortWithStatusJSON(401, gin.H{"error": "invalid token"})
+			return
+		}
+
 		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 
 		claims, err := jwtService.ValidateToken(tokenString)
@@ -24,10 +29,28 @@ func AuthMiddleware(jwtService *services.JWTService) gin.HandlerFunc {
 			return
 		}
 
+		tokenType, ok := claims["type"].(string)
+		if !ok || tokenType != "access" {
+			c.AbortWithStatusJSON(401, gin.H{"error": "invalid token"})
+			return
+		}
+
+		userIDValue, ok := claims["user_id"].(float64)
+		if !ok {
+			c.AbortWithStatusJSON(401, gin.H{"error": "invalid token"})
+			return
+		}
+
+		roleValue, ok := claims["role"].(string)
+		if !ok {
+			c.AbortWithStatusJSON(401, gin.H{"error": "invalid token"})
+			return
+		}
+
 		// ✅ inject ke context
-		userID := uint(claims["user_id"].(float64))
+		userID := uint(userIDValue)
 		c.Set("user_id", userID)
-		c.Set("role", claims["role"])
+		c.Set("role", roleValue)
 
 		c.Next()
 	}

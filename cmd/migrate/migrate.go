@@ -9,7 +9,8 @@ import (
 
 func main() {
 	config.LoadEnv()
-	if err := appsetup.RunMigrations(); err != nil {
+	appConfig := config.LoadAppConfig()
+	if err := appsetup.RunMigrations(appConfig.DatabaseURL); err != nil {
 		log.Fatalf("Migration failed: %v", err)
 	}
 

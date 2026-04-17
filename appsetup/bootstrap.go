@@ -2,7 +2,6 @@ package appsetup
 
 import (
 	"log"
-	"strings"
 
 	"go-auth-app/config"
 	"go-auth-app/seeds"
@@ -10,24 +9,24 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"gorm.io/gorm"
 )
 
-func RunStartupTasks() {
-	if shouldRunFromEnv("AUTO_RUN_MIGRATIONS") {
-		if err := RunMigrations(); err != nil {
+func RunStartupTasks(cfg config.AppConfig, db *gorm.DB) {
+	if cfg.AutoRunMigrations {
+		if err := RunMigrations(cfg.DatabaseURL); err != nil {
 			log.Fatalf("❌ startup migrations failed: %v", err)
 		}
 		log.Println("✅ startup migrations completed")
 	}
 
-	if shouldRunFromEnv("AUTO_RUN_SEEDS") {
-		RunSeeds()
+	if cfg.AutoRunSeeds {
+		RunSeeds(db, cfg)
 		log.Println("✅ startup seeds completed")
 	}
 }
 
-func RunMigrations() error {
-	dbURL := config.DatabaseURL()
+func RunMigrations(dbURL string) error {
 	if dbURL == "" {
 		log.Fatal("❌ DATABASE_URL is not set")
 	}
@@ -45,17 +44,12 @@ func RunMigrations() error {
 	return nil
 }
 
-func RunSeeds() {
-	if config.DB == nil {
+func RunSeeds(db *gorm.DB, cfg config.AppConfig) {
+	if db == nil {
 		log.Fatal("❌ DB is not initialized before seeding")
 	}
 
-	seeds.SeedRoles(config.DB)
-	seeds.SeedPermissions(config.DB)
-	seeds.SeedAdmin(config.DB)
-}
-
-func shouldRunFromEnv(key string) bool {
-	value := strings.TrimSpace(strings.ToLower(config.GetEnv(key, "")))
-	return value == "1" || value == "true" || value == "yes"
+	seeds.SeedRoles(db)
+	seeds.SeedPermissions(db)
+	seeds.SeedAdmin(db, cfg)
 }

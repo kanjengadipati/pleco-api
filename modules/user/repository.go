@@ -1,6 +1,6 @@
 package user
 
-import "go-auth-app/config"
+import "gorm.io/gorm"
 
 type Repository interface {
 	Create(user *User) error
@@ -12,37 +12,39 @@ type Repository interface {
 	Delete(id uint) error
 }
 
-type GormRepository struct{}
+type GormRepository struct {
+	db *gorm.DB
+}
 
 var _ Repository = (*GormRepository)(nil)
 
-func NewRepository() Repository {
-	return &GormRepository{}
+func NewRepository(db *gorm.DB) Repository {
+	return &GormRepository{db: db}
 }
 
 func (r *GormRepository) Create(user *User) error {
-	return config.DB.Create(user).Error
+	return r.db.Create(user).Error
 }
 
 func (r *GormRepository) FindByEmail(email string) (*User, error) {
 	var user User
-	err := config.DB.Where("email = ?", email).First(&user).Error
+	err := r.db.Where("email = ?", email).First(&user).Error
 	return &user, err
 }
 
 func (r *GormRepository) FindByID(id uint) (*User, error) {
 	var user User
-	err := config.DB.First(&user, id).Error
+	err := r.db.First(&user, id).Error
 	return &user, err
 }
 
 func (r *GormRepository) Update(user *User) error {
-	return config.DB.Save(user).Error
+	return r.db.Save(user).Error
 }
 
 func (r *GormRepository) FindAll() ([]User, error) {
 	var users []User
-	err := config.DB.Find(&users).Error
+	err := r.db.Find(&users).Error
 	return users, err
 }
 
@@ -50,7 +52,7 @@ func (r *GormRepository) FindAllWithFilter(page, limit int, search, role string)
 	var users []User
 	var total int64
 
-	query := config.DB.Model(&User{})
+	query := r.db.Model(&User{})
 
 	if search != "" {
 		query = query.Where("name ILIKE ? OR email ILIKE ?", "%"+search+"%", "%"+search+"%")
@@ -81,5 +83,5 @@ func (r *GormRepository) FindAllWithFilter(page, limit int, search, role string)
 }
 
 func (r *GormRepository) Delete(id uint) error {
-	return config.DB.Delete(&User{}, id).Error
+	return r.db.Delete(&User{}, id).Error
 }

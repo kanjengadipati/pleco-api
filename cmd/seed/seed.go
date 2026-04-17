@@ -10,11 +10,12 @@ import (
 func main() {
 	// Load env (WAJIB)
 	config.LoadEnv()
+	appConfig := config.LoadAppConfig()
 
 	// Init DB (WAJIB)
-	config.ConnectDB()
+	db := config.ConnectDB(appConfig.DatabaseURL)
 	log.Println("Start seeding...")
-	appsetup.RunSeeds()
+	appsetup.RunSeeds(db, appConfig)
 
 	log.Println("Seeding done 🚀")
 }

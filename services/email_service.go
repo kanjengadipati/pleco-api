@@ -2,8 +2,9 @@ package services
 
 import (
 	"fmt"
-	"os"
 	"strings"
+
+	"go-auth-app/config"
 
 	"github.com/sendgrid/sendgrid-go"
 	"github.com/sendgrid/sendgrid-go/helpers/mail"
@@ -26,12 +27,12 @@ type emailService struct {
 var _ EmailService = (*emailService)(nil)
 
 // NewEmailService returns a new emailService as EmailService
-func NewEmailService() EmailService {
+func NewEmailService(cfg config.EmailConfig) EmailService {
 	return &emailService{
-		apiKey:      os.Getenv("SENDGRID_API_KEY"),
-		from:        os.Getenv("SENDGRID_EMAIL"),
-		appBaseURL:  firstNonEmpty(os.Getenv("APP_BASE_URL"), os.Getenv("RENDER_EXTERNAL_URL"), "http://localhost:8080"),
-		frontendURL: os.Getenv("FRONTEND_URL"),
+		apiKey:      cfg.APIKey,
+		from:        cfg.From,
+		appBaseURL:  firstNonEmpty(cfg.AppBaseURL, "http://localhost:8080"),
+		frontendURL: cfg.FrontendURL,
 	}
 }
 
