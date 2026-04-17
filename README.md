@@ -64,6 +64,8 @@ Common variables used by this project:
 
 ```env
 DATABASE_URL=postgresql://postgres:password@localhost:5432/auth_db?sslmode=disable
+AUTO_RUN_MIGRATIONS=false
+AUTO_RUN_SEEDS=false
 APP_BASE_URL=http://localhost:8080
 FRONTEND_URL=http://localhost:3000
 
@@ -76,6 +78,8 @@ ADMIN_PASSWORD=supersecret
 If you use the email flow, make sure the SendGrid variables are also configured based on [`services/email_service.go`](/Users/meilanasapta/Code/go-auth-app/services/email_service.go#L1).
 
 `APP_BASE_URL` is used for backend-generated links such as email verification. `FRONTEND_URL` is optional and is used for password reset links if you have a separate frontend.
+
+For local development and Docker, keep `AUTO_RUN_MIGRATIONS=false` and `AUTO_RUN_SEEDS=false` unless you intentionally want startup-time initialization. The usual local and Docker flow still uses `go run ./cmd/migrate`, `go run ./cmd/seed`, or `make db-setup`.
 
 ## Running the Application
 
@@ -137,6 +141,8 @@ Recommended environment variables on Render:
 
 ```env
 DATABASE_URL=postgresql://<user>:<password>@<your-neon-host>/<db>?sslmode=require
+AUTO_RUN_MIGRATIONS=true
+AUTO_RUN_SEEDS=true
 JWT_SECRET=replace-with-a-long-random-secret
 APP_BASE_URL=https://<your-render-service>.onrender.com
 FRONTEND_URL=https://<your-frontend-domain>
@@ -147,6 +153,8 @@ ADMIN_PASSWORD=supersecret
 ```
 
 If you use Neon, prefer its direct connection string with `sslmode=require`. If you later need connection pooling, use Neon's pooled connection string instead.
+
+For Render deployments, this app can run migrations and seeds automatically at startup when `AUTO_RUN_MIGRATIONS=true` and `AUTO_RUN_SEEDS=true`. This is useful when you do not want to depend on Render's pre-deploy command support.
 
 This repository also includes [`render.yaml`](/Users/meilanasapta/Code/go-auth-app/render.yaml#L1) as a starting point for Render Blueprint-based deployment.
 

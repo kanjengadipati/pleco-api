@@ -3,8 +3,8 @@ package main
 import (
 	"log"
 
+	"go-auth-app/appsetup"
 	"go-auth-app/config"
-	"go-auth-app/seeds"
 )
 
 func main() {
@@ -13,18 +13,8 @@ func main() {
 
 	// Init DB (WAJIB)
 	config.ConnectDB()
-
-	// Run seeder
 	log.Println("Start seeding...")
-
-	seeds.SeedRoles(config.DB)
-	log.Println("SeedRoles done")
-
-	seeds.SeedPermissions(config.DB)
-	log.Println("SeedPermissions done")
-
-	seeds.SeedAdmin(config.DB)
-	log.Println("SeedAdmin done")
+	appsetup.RunSeeds()
 
 	log.Println("Seeding done 🚀")
 }
