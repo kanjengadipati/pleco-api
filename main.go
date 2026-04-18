@@ -19,6 +19,7 @@ func main() {
 	appsetup.RunStartupTasks(appConfig, db)
 	jwtService := services.NewJWTService(appConfig.JWTSecret)
 	router := appsetup.BuildRouter(db, appConfig, jwtService)
+	registerDocsRoutes(router)
 
 	if err := router.Run(":" + appConfig.Port); err != nil {
 		panic(err)
