@@ -5,7 +5,11 @@ import (
 	"go-api-starterkit/config"
 
 	"go-api-starterkit/services"
+
+	"github.com/gin-gonic/gin"
 )
+
+var registerDocsRoutes = func(_ *gin.Engine) {}
 
 func initApp() {
 	// Load env & init JWT
