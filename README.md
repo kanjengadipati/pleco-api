@@ -178,6 +178,7 @@ Authorization: Bearer <access_token>
   - success: `status`, `message`, optional `data`, optional `meta`
   - error: `status`, `message`, optional `errors`
 - OpenAPI reference is available at [`docs/openapi.yaml`](/Users/meilanasapta/Code/go-auth-app/docs/openapi.yaml#L1)
+- Swagger UI is served by the app at `/docs`
 
 ## Example Requests
 
