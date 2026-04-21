@@ -115,6 +115,7 @@ Copy one of the example files depending on your workflow:
 
 ```env
 DATABASE_URL=postgresql://postgres:password@localhost:5432/auth_db?sslmode=disable
+TRUSTED_PROXIES=127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
 JWT_SECRET=replace-with-a-strong-secret
 APP_BASE_URL=http://localhost:8080
 FRONTEND_URL=http://localhost:3000
@@ -131,6 +132,7 @@ APPLE_CLIENT_ID=
 ### Notes
 
 - `DATABASE_URL` is the primary database connection setting.
+- `TRUSTED_PROXIES` controls which proxy hops are trusted for forwarded client IP handling.
 - the app validates critical configuration at startup and exits early when required values are missing or incomplete.
 - `APP_BASE_URL` is used for backend-generated links such as email verification.
 - `FRONTEND_URL` is used for password reset links when you have a separate frontend.
@@ -593,6 +595,7 @@ This repository includes:
 - Nginx gateway
 - `db-setup` container for migration and seed
 - basic Nginx rate limiting
+- request ID forwarding and upstream timeouts
 
 ### Start the full stack
 
@@ -615,6 +618,8 @@ By default the gateway is exposed at:
 ```text
 http://localhost
 ```
+
+The Nginx layer is an optional lightweight gateway example for local and containerized setups. The app can still run directly without it.
 
 ## Database Tasks
 
@@ -811,6 +816,8 @@ make db-setup
 - Use separate credentials for local, staging, and production environments.
 - Sensitive auth endpoints include basic in-memory rate limiting to reduce brute-force and spam attempts.
 - The app sets lightweight security headers such as `X-Content-Type-Options` and `X-Frame-Options`.
+- Request IDs are propagated through the app via the `X-Request-ID` header.
+- Trusted proxy handling is configurable through `TRUSTED_PROXIES` so client IP-based audit and rate limiting work more safely behind a gateway.
 
 ## Roadmap Ideas
 

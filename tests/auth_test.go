@@ -2,6 +2,7 @@ package tests
 
 import (
 	"errors"
+	"go-api-starterkit/internal/appsetup"
 	"go-api-starterkit/internal/config"
 	"go-api-starterkit/internal/middleware"
 	auth "go-api-starterkit/internal/modules/auth"
@@ -782,4 +783,35 @@ func TestSecurityHeadersMiddleware_SetsExpectedHeaders(t *testing.T) {
 	assert.Equal(t, "DENY", resp.Header().Get("X-Frame-Options"))
 	assert.Equal(t, "no-referrer", resp.Header().Get("Referrer-Policy"))
 	assert.Equal(t, "none", resp.Header().Get("X-Permitted-Cross-Domain-Policies"))
+}
+
+func TestRequestIDMiddleware_UsesIncomingHeader(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.Use(middleware.RequestID())
+	router.GET("/health", func(c *gin.Context) {
+		c.Status(http.StatusOK)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	req.Header.Set("X-Request-ID", "req-123")
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	assert.Equal(t, "req-123", resp.Header().Get("X-Request-ID"))
+}
+
+func TestBuildRouter_RejectsInvalidTrustedProxy(t *testing.T) {
+	cfg := config.AppConfig{
+		Port:           "8080",
+		DatabaseURL:    "postgresql://postgres:password@localhost:5432/auth_db?sslmode=disable",
+		TrustedProxies: []string{"definitely-not-a-cidr"},
+		JWTSecret:      []byte("secret"),
+	}
+
+	router, err := appsetup.BuildRouter(nil, cfg, services.NewJWTService([]byte("secret")))
+
+	assert.Nil(t, router)
+	assert.Error(t, err)
 }

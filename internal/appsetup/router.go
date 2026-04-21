@@ -33,9 +33,13 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 	})
 }
 
-func BuildRouter(db *gorm.DB, cfg config.AppConfig, jwtService *services.JWTService) *gin.Engine {
+func BuildRouter(db *gorm.DB, cfg config.AppConfig, jwtService *services.JWTService) (*gin.Engine, error) {
 	router := gin.Default()
+	if err := router.SetTrustedProxies(cfg.TrustedProxies); err != nil {
+		return nil, err
+	}
+	router.Use(middleware.RequestID())
 	router.Use(middleware.SecurityHeaders())
 	RegisterRoutes(router, db, cfg, jwtService)
-	return router
+	return router, nil
 }

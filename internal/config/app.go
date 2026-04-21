@@ -23,6 +23,7 @@ type SocialConfig struct {
 type AppConfig struct {
 	Port              string
 	DatabaseURL       string
+	TrustedProxies    []string
 	JWTSecret         []byte
 	AdminEmail        string
 	AdminPassword     string
@@ -36,6 +37,7 @@ func LoadAppConfig() AppConfig {
 	return AppConfig{
 		Port:              GetEnv("PORT", "8080"),
 		DatabaseURL:       GetEnv("DATABASE_URL", ""),
+		TrustedProxies:    envList("TRUSTED_PROXIES", []string{"127.0.0.1", "::1", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"}),
 		JWTSecret:         []byte(GetEnv("JWT_SECRET", "")),
 		AdminEmail:        GetEnv("ADMIN_EMAIL", ""),
 		AdminPassword:     GetEnv("ADMIN_PASSWORD", ""),
@@ -98,6 +100,26 @@ func (c AppConfig) Validate() error {
 func envBool(key string) bool {
 	value := strings.TrimSpace(strings.ToLower(GetEnv(key, "")))
 	return value == "1" || value == "true" || value == "yes"
+}
+
+func envList(key string, fallback []string) []string {
+	value := strings.TrimSpace(GetEnv(key, ""))
+	if value == "" {
+		return append([]string(nil), fallback...)
+	}
+
+	parts := strings.Split(value, ",")
+	items := make([]string, 0, len(parts))
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part != "" {
+			items = append(items, part)
+		}
+	}
+	if len(items) == 0 {
+		return append([]string(nil), fallback...)
+	}
+	return items
 }
 
 func firstNonEmptyEnv(keys ...string) string {

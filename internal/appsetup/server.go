@@ -19,7 +19,10 @@ func RunAPI(registerDocs func(*gin.Engine)) error {
 	RunStartupTasks(appConfig, db)
 
 	jwtService := services.NewJWTService(appConfig.JWTSecret)
-	router := BuildRouter(db, appConfig, jwtService)
+	router, err := BuildRouter(db, appConfig, jwtService)
+	if err != nil {
+		return err
+	}
 
 	if registerDocs != nil {
 		registerDocs(router)
