@@ -667,6 +667,38 @@ paths:
               schema:
                 $ref: '#/components/schemas/EnvelopeError'
 
+  /auth/admin/audit-logs/investigate:
+    post:
+      tags: [Audit]
+      summary: Investigate filtered audit logs with AI
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuditInvestigationRequest'
+      responses:
+        '200':
+          description: Audit investigation completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeAuditInvestigation'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeError'
+        '503':
+          description: AI investigator is not enabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeError'
+
 components:
   securitySchemes:
     bearerAuth:
@@ -820,6 +852,27 @@ components:
           type: array
           items:
             type: string
+    AuditInvestigationRequest:
+      type: object
+      properties:
+        action:
+          type: string
+        resource:
+          type: string
+        status:
+          type: string
+        actor_user_id:
+          type: integer
+        search:
+          type: string
+        date_from:
+          type: string
+          format: date-time
+        date_to:
+          type: string
+          format: date-time
+        limit:
+          type: integer
     RolePermissions:
       type: object
       properties:
@@ -870,6 +923,23 @@ components:
         created_at:
           type: string
           format: date-time
+    AuditInvestigation:
+      type: object
+      properties:
+        summary:
+          type: string
+        timeline:
+          type: array
+          items:
+            type: string
+        suspicious_signals:
+          type: array
+          items:
+            type: string
+        recommendations:
+          type: array
+          items:
+            type: string
     FieldError:
       type: object
       properties:
@@ -1067,3 +1137,26 @@ components:
               type: string
               format: date-time
               nullable: true
+    EnvelopeAuditInvestigation:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/AuditInvestigation'
+        meta:
+          type: object
+          properties:
+            log_count:
+              type: integer
+            limit:
+              type: integer
+            resource:
+              type: string
+            action:
+              type: string
+            status:
+              type: string

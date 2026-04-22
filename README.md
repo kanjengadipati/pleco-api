@@ -53,6 +53,7 @@ This project provides:
 - Google, Facebook, and Apple social login
 - admin user management
 - audit trail for important auth and user actions
+- optional AI audit log investigator with mock or Ollama provider support
 - permission-based authorization for admin actions
 - basic auth endpoint rate limiting and security headers
 - request-scoped structured logging with request ID propagation
@@ -128,6 +129,11 @@ GOOGLE_CLIENT_ID=
 FACEBOOK_APP_ID=
 FACEBOOK_APP_SECRET=
 APPLE_CLIENT_ID=
+AI_ENABLED=false
+AI_PROVIDER=mock
+AI_MODEL=qwen2.5:3b
+AI_BASE_URL=http://localhost:11434
+AI_API_KEY=
 ```
 
 ### Notes
@@ -140,6 +146,8 @@ APPLE_CLIENT_ID=
 - `GOOGLE_CLIENT_ID` is optional, but recommended so Google token validation checks the audience claim.
 - `FACEBOOK_APP_ID` and `FACEBOOK_APP_SECRET` are required for Facebook social login.
 - `APPLE_CLIENT_ID` is required for Sign in with Apple token validation.
+- `AI_ENABLED=false` keeps the app fully usable without AI.
+- `AI_PROVIDER` currently supports `mock` and `ollama`.
 - `AUTO_RUN_MIGRATIONS` and `AUTO_RUN_SEEDS` are optional flags if you intentionally want schema setup at app startup.
 
 For local development and Docker, keep:
@@ -549,6 +557,19 @@ curl -X GET "$BASE_URL/auth/admin/audit-logs/export?resource=user&status=success
   -H "Authorization: Bearer $ACCESS_TOKEN"
 ```
 
+### Admin: Investigate Audit Logs With AI
+
+```bash
+curl -X POST "$BASE_URL/auth/admin/audit-logs/investigate" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "resource": "auth",
+    "status": "failed",
+    "limit": 50
+  }'
+```
+
 ### Admin: Get Roles
 
 ```bash
@@ -791,6 +812,7 @@ make db-setup
 - `DELETE /auth/admin/users/:id`
 - `GET /auth/admin/audit-logs`
 - `GET /auth/admin/audit-logs/export`
+- `POST /auth/admin/audit-logs/investigate`
 - `GET /auth/admin/roles`
 - `GET /auth/admin/permissions`
 - `GET /auth/admin/roles/:id/permissions`

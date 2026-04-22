@@ -72,6 +72,25 @@ func TestAppConfigValidateRequiresAdminCredentialsWhenSeedingIsEnabled(t *testin
 	assertContains(t, err.Error(), "ADMIN_EMAIL and ADMIN_PASSWORD are required when AUTO_RUN_SEEDS is enabled")
 }
 
+func TestAppConfigValidateRejectsUnsupportedAIProvider(t *testing.T) {
+	cfg := AppConfig{
+		Port:        "8080",
+		DatabaseURL: "postgresql://postgres:password@localhost:5432/auth_db?sslmode=disable",
+		JWTSecret:   []byte("super-secret-key"),
+		AI: AIConfig{
+			Enabled:  true,
+			Provider: "something-else",
+		},
+	}
+
+	err := cfg.Validate()
+	if err == nil {
+		t.Fatal("expected validation error, got nil")
+	}
+
+	assertContains(t, err.Error(), "AI_PROVIDER must be one of: mock, ollama")
+}
+
 func assertContains(t *testing.T, actual, expected string) {
 	t.Helper()
 	if !strings.Contains(actual, expected) {

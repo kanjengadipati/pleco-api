@@ -20,6 +20,14 @@ type SocialConfig struct {
 	AppleClientID     string
 }
 
+type AIConfig struct {
+	Enabled  bool
+	Provider string
+	Model    string
+	BaseURL  string
+	APIKey   string
+}
+
 type AppConfig struct {
 	Port              string
 	DatabaseURL       string
@@ -31,6 +39,7 @@ type AppConfig struct {
 	AutoRunSeeds      bool
 	Email             EmailConfig
 	Social            SocialConfig
+	AI                AIConfig
 }
 
 func LoadAppConfig() AppConfig {
@@ -54,6 +63,13 @@ func LoadAppConfig() AppConfig {
 			FacebookAppID:     GetEnv("FACEBOOK_APP_ID", ""),
 			FacebookAppSecret: GetEnv("FACEBOOK_APP_SECRET", ""),
 			AppleClientID:     GetEnv("APPLE_CLIENT_ID", ""),
+		},
+		AI: AIConfig{
+			Enabled:  envBool("AI_ENABLED"),
+			Provider: strings.ToLower(GetEnv("AI_PROVIDER", "mock")),
+			Model:    GetEnv("AI_MODEL", "qwen2.5:3b"),
+			BaseURL:  GetEnv("AI_BASE_URL", "http://localhost:11434"),
+			APIKey:   GetEnv("AI_API_KEY", ""),
 		},
 	}
 }
@@ -88,6 +104,21 @@ func (c AppConfig) Validate() error {
 
 	if c.AutoRunSeeds && (c.AdminEmail == "" || c.AdminPassword == "") {
 		problems = append(problems, "ADMIN_EMAIL and ADMIN_PASSWORD are required when AUTO_RUN_SEEDS is enabled")
+	}
+
+	if c.AI.Enabled {
+		switch c.AI.Provider {
+		case "mock":
+		case "ollama":
+			if c.AI.BaseURL == "" {
+				problems = append(problems, "AI_BASE_URL is required when AI_PROVIDER is ollama")
+			}
+			if c.AI.Model == "" {
+				problems = append(problems, "AI_MODEL is required when AI_PROVIDER is ollama")
+			}
+		default:
+			problems = append(problems, "AI_PROVIDER must be one of: mock, ollama")
+		}
 	}
 
 	if len(problems) > 0 {

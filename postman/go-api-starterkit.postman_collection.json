@@ -670,6 +670,34 @@
           }
         },
         {
+          "name": "Investigate Audit Logs",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('investigate audit logs returns known status', function () {",
+                  "  pm.expect([200, 403, 503]).to.include(pm.response.code);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"resource\": \"auth\",\n  \"status\": \"failed\",\n  \"limit\": 50\n}"
+            },
+            "url": "{{base_url}}/auth/admin/audit-logs/investigate"
+          }
+        },
+        {
           "name": "Get Roles",
           "event": [
             {

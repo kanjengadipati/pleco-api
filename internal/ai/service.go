@@ -1,0 +1,52 @@
+package ai
+
+import (
+	"context"
+	"errors"
+
+	"go-api-starterkit/internal/config"
+)
+
+var ErrDisabled = errors.New("ai is disabled")
+
+type Service struct {
+	enabled  bool
+	model    string
+	provider Provider
+}
+
+func NewService(cfg config.AIConfig) (*Service, error) {
+	service := &Service{
+		enabled: cfg.Enabled,
+		model:   cfg.Model,
+	}
+
+	if !cfg.Enabled {
+		return service, nil
+	}
+
+	switch cfg.Provider {
+	case "mock":
+		service.provider = NewMockProvider()
+	case "ollama":
+		service.provider = NewOllamaProvider(cfg.BaseURL)
+	default:
+		return nil, errors.New("unsupported ai provider")
+	}
+
+	return service, nil
+}
+
+func (s *Service) Enabled() bool {
+	return s != nil && s.enabled && s.provider != nil
+}
+
+func (s *Service) Generate(ctx context.Context, input GenerateInput) (*GenerateResult, error) {
+	if s == nil || !s.enabled || s.provider == nil {
+		return nil, ErrDisabled
+	}
+	if input.Model == "" {
+		input.Model = s.model
+	}
+	return s.provider.Generate(ctx, input)
+}

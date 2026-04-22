@@ -4,9 +4,12 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
+	aiModule "go-api-starterkit/internal/ai"
+	"go-api-starterkit/internal/config"
 	"go-api-starterkit/internal/modules/audit"
 
 	"github.com/gin-gonic/gin"
@@ -61,7 +64,7 @@ func TestAuditHandler_GetLogs_WithExtendedFilter(t *testing.T) {
 		},
 	})
 
-	handler := audit.NewHandler(service)
+	handler := audit.NewHandler(service, nil)
 
 	gin.SetMode(gin.TestMode)
 	w := httptest.NewRecorder()
@@ -85,7 +88,7 @@ func TestAuditHandler_GetLogs_WithExtendedFilter(t *testing.T) {
 }
 
 func TestAuditHandler_GetLogs_InvalidDateRange(t *testing.T) {
-	handler := audit.NewHandler(audit.NewService(&stubAuditRepo{}))
+	handler := audit.NewHandler(audit.NewService(&stubAuditRepo{}), nil)
 
 	gin.SetMode(gin.TestMode)
 	w := httptest.NewRecorder()
@@ -127,7 +130,7 @@ func TestAuditHandler_ExportLogs_ReturnsCSV(t *testing.T) {
 			}, nil
 		},
 	})
-	handler := audit.NewHandler(service)
+	handler := audit.NewHandler(service, nil)
 
 	gin.SetMode(gin.TestMode)
 	w := httptest.NewRecorder()
@@ -154,4 +157,119 @@ func TestAuditService_ExportLogsCSV_PropagatesRepositoryError(t *testing.T) {
 
 	assert.Nil(t, payload)
 	assert.EqualError(t, err, "db down")
+}
+
+func TestAuditInvestigatorService_WithMockProvider(t *testing.T) {
+	aiService, err := aiModule.NewService(config.AIConfig{
+		Enabled:  true,
+		Provider: "mock",
+		Model:    "mock-model",
+	})
+	assert.NoError(t, err)
+
+	repo := &stubAuditRepo{
+		findAllWithFilter: func(filter audit.Filter) ([]audit.AuditLog, int64, error) {
+			return []audit.AuditLog{
+				{
+					Model: gorm.Model{
+						ID:        1,
+						CreatedAt: time.Date(2026, 4, 21, 10, 0, 0, 0, time.UTC),
+					},
+					Action:      "login",
+					Resource:    "auth",
+					Status:      "failed",
+					Description: "invalid credentials",
+					IPAddress:   "203.0.113.1",
+				},
+			}, 1, nil
+		},
+	}
+
+	service := audit.NewInvestigatorService(repo, aiService)
+	result, logs, err := service.Investigate(t.Context(), audit.Filter{Resource: "auth", Limit: 20})
+
+	assert.NoError(t, err)
+	assert.Len(t, logs, 1)
+	assert.Contains(t, result.Summary, "AI mock analysis completed")
+	assert.NotEmpty(t, result.Timeline)
+	assert.NotEmpty(t, result.Recommendations)
+}
+
+func TestAuditHandler_InvestigateLogs_Success(t *testing.T) {
+	aiService, err := aiModule.NewService(config.AIConfig{
+		Enabled:  true,
+		Provider: "mock",
+		Model:    "mock-model",
+	})
+	assert.NoError(t, err)
+
+	repo := &stubAuditRepo{
+		findAllWithFilter: func(filter audit.Filter) ([]audit.AuditLog, int64, error) {
+			assert.Equal(t, "auth", filter.Resource)
+			assert.Equal(t, "failed", filter.Status)
+			assert.Equal(t, 25, filter.Limit)
+			return []audit.AuditLog{
+				{
+					Model: gorm.Model{
+						ID:        1,
+						CreatedAt: time.Date(2026, 4, 21, 10, 0, 0, 0, time.UTC),
+					},
+					Action:      "login",
+					Resource:    "auth",
+					Status:      "failed",
+					Description: "invalid credentials",
+					IPAddress:   "203.0.113.1",
+				},
+			}, 1, nil
+		},
+	}
+
+	handler := audit.NewHandler(
+		audit.NewService(repo),
+		audit.NewInvestigatorService(repo, aiService),
+	)
+
+	gin.SetMode(gin.TestMode)
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(
+		http.MethodPost,
+		"/audit-logs/investigate",
+		strings.NewReader(`{"resource":"auth","status":"failed","limit":25}`),
+	)
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	handler.InvestigateLogs(c)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	bodyMap := decodeBodyMap(t, w)
+	assert.Equal(t, "success", bodyMap["status"])
+	assert.Equal(t, "Audit investigation completed", bodyMap["message"])
+	meta := bodyMap["meta"].(map[string]interface{})
+	assert.Equal(t, float64(1), meta["log_count"])
+}
+
+func TestAuditHandler_InvestigateLogs_DisabledAI(t *testing.T) {
+	repo := &stubAuditRepo{}
+	handler := audit.NewHandler(
+		audit.NewService(repo),
+		audit.NewInvestigatorService(repo, nil),
+	)
+
+	gin.SetMode(gin.TestMode)
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(
+		http.MethodPost,
+		"/audit-logs/investigate",
+		strings.NewReader(`{"resource":"auth"}`),
+	)
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	handler.InvestigateLogs(c)
+
+	assert.Equal(t, http.StatusServiceUnavailable, w.Code)
+	bodyMap := decodeBodyMap(t, w)
+	assert.Equal(t, "error", bodyMap["status"])
+	assert.Equal(t, "ai investigator is not enabled", bodyMap["message"])
 }

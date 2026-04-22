@@ -12,10 +12,11 @@ import (
 
 type Handler struct {
 	AuditService *Service
+	AIService    *InvestigatorService
 }
 
-func NewHandler(auditService *Service) *Handler {
-	return &Handler{AuditService: auditService}
+func NewHandler(auditService *Service, aiService *InvestigatorService) *Handler {
+	return &Handler{AuditService: auditService, AIService: aiService}
 }
 
 func (h *Handler) GetLogs(c *gin.Context) {
@@ -64,6 +65,41 @@ func (h *Handler) ExportLogs(c *gin.Context) {
 	c.Data(200, "text/csv; charset=utf-8", payload)
 }
 
+func (h *Handler) InvestigateLogs(c *gin.Context) {
+	var input InvestigateRequest
+	if err := c.ShouldBindJSON(&input); err != nil {
+		httpx.ValidationError(c, httpx.FormatValidationError(err))
+		return
+	}
+
+	filter, err := buildFilterFromRequest(input)
+	if err != nil {
+		httpx.Error(c, 400, err.Error())
+		return
+	}
+
+	result, logs, err := h.AIService.Investigate(c.Request.Context(), filter)
+	if err != nil {
+		switch err.Error() {
+		case "ai investigator is not enabled":
+			httpx.Error(c, 503, err.Error())
+		case "no audit logs found for investigation":
+			httpx.Error(c, 404, err.Error())
+		default:
+			httpx.Error(c, 500, err.Error())
+		}
+		return
+	}
+
+	httpx.Success(c, 200, "Audit investigation completed", result, gin.H{
+		"log_count": len(logs),
+		"limit":     filter.Limit,
+		"resource":  filter.Resource,
+		"action":    filter.Action,
+		"status":    filter.Status,
+	})
+}
+
 func buildFilter(c *gin.Context) (Filter, error) {
 	page := 1
 	limit := 10
@@ -109,6 +145,46 @@ func buildFilter(c *gin.Context) (Filter, error) {
 	if dateTo := c.Query("date_to"); dateTo != "" {
 		parsed := time.Time{}
 		parsed, err = time.Parse(time.RFC3339, dateTo)
+		if err != nil {
+			return Filter{}, fmt.Errorf("date_to must use RFC3339 format")
+		}
+		filter.DateTo = &parsed
+	}
+	if filter.DateFrom != nil && filter.DateTo != nil && filter.DateFrom.After(*filter.DateTo) {
+		return Filter{}, fmt.Errorf("date_from must be before or equal to date_to")
+	}
+
+	return filter, nil
+}
+
+func buildFilterFromRequest(input InvestigateRequest) (Filter, error) {
+	filter := Filter{
+		Page:     1,
+		Limit:    input.Limit,
+		Action:   input.Action,
+		Resource: input.Resource,
+		Status:   input.Status,
+		Search:   input.Search,
+	}
+
+	if filter.Limit <= 0 {
+		filter.Limit = 50
+	}
+
+	filter.ActorUserID = input.ActorUserID
+
+	var err error
+	if input.DateFrom != "" {
+		parsed := time.Time{}
+		parsed, err = time.Parse(time.RFC3339, input.DateFrom)
+		if err != nil {
+			return Filter{}, fmt.Errorf("date_from must use RFC3339 format")
+		}
+		filter.DateFrom = &parsed
+	}
+	if input.DateTo != "" {
+		parsed := time.Time{}
+		parsed, err = time.Parse(time.RFC3339, input.DateTo)
 		if err != nil {
 			return Filter{}, fmt.Errorf("date_to must use RFC3339 format")
 		}
