@@ -470,7 +470,7 @@ This starterkit is designed to stay platform-agnostic.
 - Inject secrets through your deployment platform instead of committing real env files
 
 ```bash
-go build -tags netgo -ldflags '-s -w' -o app .
+go build -tags netgo -ldflags '-s -w' -o app ./cmd/api
 ./app
 ```
 
