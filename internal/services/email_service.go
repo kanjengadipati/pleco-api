@@ -37,7 +37,8 @@ func NewEmailService(cfg config.EmailConfig) EmailService {
 }
 
 func (s *emailService) SendVerificationEmail(toEmail, token string) error {
-	link := fmt.Sprintf("%s/auth/verify?token=%s", trimTrailingSlash(s.appBaseURL), token)
+	verifyBaseURL := firstNonEmpty(s.frontendURL, s.appBaseURL)
+	link := fmt.Sprintf("%s/verify?token=%s", trimTrailingSlash(verifyBaseURL), token)
 
 	from := mail.NewEmail("Go App", s.from)
 	subject := "Verify Your Email"
