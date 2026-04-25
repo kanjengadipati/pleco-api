@@ -21,9 +21,16 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"google.golang.org/api/idtoken"
 	"gorm.io/gorm"
+	"sync"
 )
 
 var socialHTTPClient = &http.Client{Timeout: 10 * time.Second}
+
+var (
+	appleKeysCache     *appleJWKSet
+	appleKeysCacheTime time.Time
+	appleKeysMutex     sync.RWMutex
+)
 
 type socialProfile struct {
 	Email          string
@@ -292,12 +299,28 @@ func (s *authService) validateAppleToken(token string) (*socialProfile, error) {
 }
 
 func fetchApplePublicKey(kid string) (*ecdsa.PublicKey, error) {
-	var keySet appleJWKSet
-	if err := getJSON("https://appleid.apple.com/auth/keys", &keySet); err != nil {
-		return nil, err
+	appleKeysMutex.RLock()
+	cache := appleKeysCache
+	cacheTime := appleKeysCacheTime
+	appleKeysMutex.RUnlock()
+
+	if cache == nil || time.Since(cacheTime) > 1*time.Hour {
+		appleKeysMutex.Lock()
+		// Double-check after acquiring lock
+		if appleKeysCache == nil || time.Since(appleKeysCacheTime) > 1*time.Hour {
+			var newKeySet appleJWKSet
+			if err := getJSON("https://appleid.apple.com/auth/keys", &newKeySet); err != nil {
+				appleKeysMutex.Unlock()
+				return nil, err
+			}
+			appleKeysCache = &newKeySet
+			appleKeysCacheTime = time.Now()
+		}
+		cache = appleKeysCache
+		appleKeysMutex.Unlock()
 	}
 
-	for _, key := range keySet.Keys {
+	for _, key := range cache.Keys {
 		if key.Kid != kid {
 			continue
 		}

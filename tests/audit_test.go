@@ -77,6 +77,10 @@ func (s *stubAuditRepo) FindInvestigationByID(id uint) (*audit.AuditInvestigatio
 	return nil, gorm.ErrRecordNotFound
 }
 
+func (s *stubAuditRepo) WithTx(_ *gorm.DB) audit.Repository {
+	return s
+}
+
 func TestAuditHandler_GetLogs_WithExtendedFilter(t *testing.T) {
 	expectedActorID := uint(42)
 	expectedFrom, _ := time.Parse(time.RFC3339, "2026-04-20T00:00:00Z")

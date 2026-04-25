@@ -9,8 +9,10 @@ type RateLimitStore interface {
 	Allow(key string, limit int, window time.Duration, now time.Time) (bool, time.Time)
 }
 
-// InMemoryRateLimitStore is suitable for a single app instance.
-// Multi-instance deployments should swap this with a shared store, such as Redis.
+// InMemoryRateLimitStore is suitable for a single app instance ONLY.
+// WARNING: This implementation is NOT suitable for multi-instance/distributed deployments
+// as rate limits are not shared across instances. Swapping this with a shared store 
+// like Redis is highly recommended for production scale.
 type InMemoryRateLimitStore struct {
 	mu      sync.Mutex
 	entries map[string]rateLimitEntry

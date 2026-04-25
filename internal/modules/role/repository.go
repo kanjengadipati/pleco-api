@@ -5,6 +5,7 @@ import "gorm.io/gorm"
 type Repository interface {
 	FindByID(id uint) (*Role, error)
 	FindAll() ([]Role, error)
+	WithTx(tx *gorm.DB) Repository
 }
 
 type GormRepository struct {
@@ -33,4 +34,8 @@ func (r *GormRepository) FindAll() ([]Role, error) {
 	}
 
 	return roles, nil
+}
+
+func (r *GormRepository) WithTx(tx *gorm.DB) Repository {
+	return &GormRepository{db: tx}
 }

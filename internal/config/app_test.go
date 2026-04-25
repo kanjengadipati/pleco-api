@@ -9,7 +9,7 @@ func TestAppConfigValidateAcceptsMinimalValidConfig(t *testing.T) {
 	cfg := AppConfig{
 		Port:        "8080",
 		DatabaseURL: "postgresql://postgres:password@localhost:5432/auth_db?sslmode=disable",
-		JWTSecret:   []byte("super-secret-key"),
+		JWTSecret:   []byte("super_secret_key_123_must_be_32_bytes_long_minimum"),
 	}
 
 	if err := cfg.Validate(); err != nil {
@@ -27,7 +27,7 @@ func TestAppConfigValidateRejectsMissingRequiredValues(t *testing.T) {
 
 	message := err.Error()
 	assertContains(t, message, "DATABASE_URL is required")
-	assertContains(t, message, "JWT_SECRET is required")
+	assertContains(t, message, "JWT_SECRET must be at least 32 bytes")
 	assertContains(t, message, "PORT must be a valid number between 1 and 65535")
 }
 
@@ -35,7 +35,7 @@ func TestAppConfigValidateRejectsPartialProviderConfiguration(t *testing.T) {
 	cfg := AppConfig{
 		Port:        "8080",
 		DatabaseURL: "postgresql://postgres:password@localhost:5432/auth_db?sslmode=disable",
-		JWTSecret:   []byte("super-secret-key"),
+		JWTSecret:   []byte("super_secret_key_123_must_be_32_bytes_long_minimum"),
 		Email: EmailConfig{
 			APIKey: "sg-key",
 		},
@@ -58,7 +58,7 @@ func TestAppConfigValidateRequiresAdminCredentialsWhenSeedingIsEnabled(t *testin
 	cfg := AppConfig{
 		Port:          "8080",
 		DatabaseURL:   "postgresql://postgres:password@localhost:5432/auth_db?sslmode=disable",
-		JWTSecret:     []byte("super-secret-key"),
+		JWTSecret:     []byte("super_secret_key_123_must_be_32_bytes_long_minimum"),
 		AutoRunSeeds:  true,
 		AdminEmail:    "admin@example.com",
 		AdminPassword: "",
@@ -76,7 +76,7 @@ func TestAppConfigValidateRejectsUnsupportedAIProvider(t *testing.T) {
 	cfg := AppConfig{
 		Port:        "8080",
 		DatabaseURL: "postgresql://postgres:password@localhost:5432/auth_db?sslmode=disable",
-		JWTSecret:   []byte("super-secret-key"),
+		JWTSecret:   []byte("super_secret_key_123_must_be_32_bytes_long_minimum"),
 		AI: AIConfig{
 			Enabled:  true,
 			Provider: "something-else",
@@ -95,7 +95,7 @@ func TestAppConfigValidateRejectsInvalidAITimeout(t *testing.T) {
 	cfg := AppConfig{
 		Port:        "8080",
 		DatabaseURL: "postgresql://postgres:password@localhost:5432/auth_db?sslmode=disable",
-		JWTSecret:   []byte("super-secret-key"),
+		JWTSecret:   []byte("super_secret_key_123_must_be_32_bytes_long_minimum"),
 		AI: AIConfig{
 			Enabled:        true,
 			Provider:       "mock",
@@ -125,7 +125,7 @@ func TestAppConfigValidateRequiresAPIKeyForOpenAIAndGemini(t *testing.T) {
 			cfg := AppConfig{
 				Port:        "8080",
 				DatabaseURL: "postgresql://postgres:password@localhost:5432/auth_db?sslmode=disable",
-				JWTSecret:   []byte("super-secret-key"),
+				JWTSecret:   []byte("super_secret_key_123_must_be_32_bytes_long_minimum"),
 				AI: AIConfig{
 					Enabled:        true,
 					Provider:       tc.provider,

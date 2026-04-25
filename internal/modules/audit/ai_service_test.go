@@ -30,6 +30,9 @@ func (s *investigatorRepoStub) FindInvestigations(filter InvestigationFilter) ([
 func (s *investigatorRepoStub) FindInvestigationByID(id uint) (*AuditInvestigation, error) {
 	return nil, gorm.ErrRecordNotFound
 }
+func (s *investigatorRepoStub) WithTx(_ *gorm.DB) Repository {
+	return s
+}
 
 func TestParseInvestigationResultSupportsStructuredValues(t *testing.T) {
 	raw := `{

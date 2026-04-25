@@ -40,6 +40,7 @@ type Repository interface {
 	FindLatestInvestigationBySnapshot(createdByUserID *uint, snapshotHash string) (*AuditInvestigation, error)
 	FindInvestigations(filter InvestigationFilter) ([]AuditInvestigation, int64, error)
 	FindInvestigationByID(id uint) (*AuditInvestigation, error)
+	WithTx(tx *gorm.DB) Repository
 }
 
 type gormRepository struct {
@@ -48,6 +49,10 @@ type gormRepository struct {
 
 func NewRepository(db *gorm.DB) Repository {
 	return &gormRepository{db: db}
+}
+
+func (r *gormRepository) WithTx(tx *gorm.DB) Repository {
+	return &gormRepository{db: tx}
 }
 
 func (r *gormRepository) Create(log *AuditLog) error {

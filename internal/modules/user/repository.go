@@ -10,6 +10,7 @@ type Repository interface {
 	FindAll() ([]User, error)
 	FindAllWithFilter(page, limit int, search, role string) ([]User, int64, error)
 	Delete(id uint) error
+	WithTx(tx *gorm.DB) Repository
 }
 
 type GormRepository struct {
@@ -82,4 +83,8 @@ func (r *GormRepository) FindAllWithFilter(page, limit int, search, role string)
 
 func (r *GormRepository) Delete(id uint) error {
 	return r.db.Delete(&User{}, id).Error
+}
+
+func (r *GormRepository) WithTx(tx *gorm.DB) Repository {
+	return &GormRepository{db: tx}
 }

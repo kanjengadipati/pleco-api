@@ -33,6 +33,9 @@ func (s *stubRoleRepo) FindAll() ([]role.Role, error) {
 	}
 	return nil, nil
 }
+func (s *stubRoleRepo) WithTx(_ *gorm.DB) role.Repository {
+	return s
+}
 
 type stubPermissionRepo struct {
 	listAll             func() ([]permission.Permission, error)
@@ -71,6 +74,9 @@ func (s *stubPermissionRepo) ReplaceRolePermissions(roleID uint, permissions []s
 		return s.replaceRole(roleID, permissions)
 	}
 	return nil
+}
+func (s *stubPermissionRepo) WithTx(_ *gorm.DB) permission.Repository {
+	return s
 }
 
 func TestRoleService_UpdateRolePermissions_NormalizesAndReplaces(t *testing.T) {

@@ -9,6 +9,7 @@ import (
 type Repository interface {
 	Create(socialAccount *SocialAccount) error
 	FindByProvider(provider string, providerID string) (*SocialAccount, error)
+	WithTx(tx *gorm.DB) Repository
 }
 
 type GormRepository struct {
@@ -44,4 +45,8 @@ func (r *GormRepository) FindByProvider(provider, providerUserID string) (*Socia
 	}
 
 	return &account, nil
+}
+
+func (r *GormRepository) WithTx(tx *gorm.DB) Repository {
+	return &GormRepository{db: tx}
 }

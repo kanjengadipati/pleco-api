@@ -8,6 +8,7 @@ type Repository interface {
 	ListRolePermissions(roleID uint) ([]string, error)
 	AllPermissionsExist(names []string) (bool, error)
 	ReplaceRolePermissions(roleID uint, permissions []string) error
+	WithTx(tx *gorm.DB) Repository
 }
 
 type gormRepository struct {
@@ -84,4 +85,8 @@ func (r *gormRepository) ReplaceRolePermissions(roleID uint, permissions []strin
 
 		return nil
 	})
+}
+
+func (r *gormRepository) WithTx(tx *gorm.DB) Repository {
+	return &gormRepository{db: tx}
 }

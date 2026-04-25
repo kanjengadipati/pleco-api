@@ -12,6 +12,7 @@ type RefreshTokenRepository interface {
 	DeleteByUserAndID(userID, id uint) error
 	DeleteByUser(userID uint) error
 	DeleteByUserExceptDevice(userID uint, deviceID string) error
+	WithTx(tx *gorm.DB) RefreshTokenRepository
 }
 
 type GormRefreshTokenRepository struct {
@@ -79,4 +80,8 @@ func (r *GormRefreshTokenRepository) DeleteByUserExceptDevice(userID uint, devic
 		query = query.Where("device_id <> ?", deviceID)
 	}
 	return query.Delete(&RefreshToken{}).Error
+}
+
+func (r *GormRefreshTokenRepository) WithTx(tx *gorm.DB) RefreshTokenRepository {
+	return &GormRefreshTokenRepository{db: tx}
 }

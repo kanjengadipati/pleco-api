@@ -6,6 +6,7 @@ import (
 	"go-api-starterkit/internal/config"
 	"go-api-starterkit/internal/middleware"
 	auth "go-api-starterkit/internal/modules/auth"
+	"go-api-starterkit/internal/modules/permission"
 	social "go-api-starterkit/internal/modules/social"
 	token "go-api-starterkit/internal/modules/token"
 	user "go-api-starterkit/internal/modules/user"
@@ -20,6 +21,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -93,6 +96,9 @@ func (s *stubRefreshTokenRepo) DeleteByUserExceptDevice(userID uint, deviceID st
 	}
 	return nil
 }
+func (s *stubRefreshTokenRepo) WithTx(_ *gorm.DB) token.RefreshTokenRepository {
+	return s
+}
 
 type stubUserRepo struct {
 	create      func(*user.User) error
@@ -124,6 +130,9 @@ func (s *stubUserRepo) Update(u *user.User) error {
 		return s.update(u)
 	}
 	return nil
+}
+func (s *stubUserRepo) WithTx(_ *gorm.DB) user.Repository {
+	return s
 }
 func (s *stubUserRepo) FindAll() ([]user.User, error) { return nil, nil }
 func (s *stubUserRepo) FindAllWithFilter(_, _ int, _, _ string) ([]user.User, int64, error) {
@@ -162,12 +171,18 @@ func (s *stubEmailVerificationRepo) DeleteByUserID(userID uint) error {
 	}
 	return nil
 }
+func (s *stubEmailVerificationRepo) WithTx(_ *gorm.DB) token.EmailVerificationRepository {
+	return s
+}
 
 type stubSocialRepo struct{}
 
 func (s *stubSocialRepo) Create(_ *social.SocialAccount) error { return nil }
 func (s *stubSocialRepo) FindByProvider(_, _ string) (*social.SocialAccount, error) {
 	return nil, nil
+}
+func (s *stubSocialRepo) WithTx(_ *gorm.DB) social.Repository {
+	return s
 }
 
 func setupTest() (*gin.Context, *httptest.ResponseRecorder) {
@@ -258,7 +273,7 @@ func TestLogout_Success(t *testing.T) {
 func TestAuthMiddleware_RejectsRefreshToken(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	jwtService := services.NewJWTService([]byte("secret"))
+	jwtService := services.NewJWTService([]byte("super_secret_key_123_must_be_32_bytes_long_minimum"))
 
 	router.GET("/protected", middleware.AuthMiddleware(jwtService), func(c *gin.Context) {
 		c.Status(http.StatusOK)
@@ -282,7 +297,7 @@ func TestAuthMiddleware_RejectsRefreshToken(t *testing.T) {
 func TestAuthMiddleware_RejectsMalformedClaimsGracefully(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	jwtService := services.NewJWTService([]byte("secret"))
+	jwtService := services.NewJWTService([]byte("super_secret_key_123_must_be_32_bytes_long_minimum"))
 
 	router.GET("/protected", middleware.AuthMiddleware(jwtService), func(c *gin.Context) {
 		c.Status(http.StatusOK)
@@ -376,6 +391,9 @@ func TestAuthService_Logout_DeletesFoundToken(t *testing.T) {
 }
 
 func TestAuthService_Register_IgnoresEmailDeliveryFailure(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	require.NoError(t, err)
+
 	userRepo := &stubUserRepo{}
 	verificationRepo := &stubEmailVerificationRepo{}
 	emailSvc := mocks.NewEmailService(t)
@@ -396,18 +414,18 @@ func TestAuthService_Register_IgnoresEmailDeliveryFailure(t *testing.T) {
 	emailSvc.On("SendVerificationEmail", "test@mail.com", mock.Anything).Return(errors.New("sendgrid unavailable"))
 
 	service := auth.NewAuthService(
-		nil,
+		db,
 		userRepo,
 		&stubRefreshTokenRepo{},
 		verificationRepo,
 		&stubSocialRepo{},
-		services.NewJWTService([]byte("secret")),
+		services.NewJWTService([]byte("super_secret_key_123_must_be_32_bytes_long_minimum")),
 		emailSvc,
 		nil,
 		config.SocialConfig{},
 	)
 
-	err := service.Register(&user.User{
+	err = service.Register(&user.User{
 		Name:  "Test",
 		Email: "test@mail.com",
 	}, "12345678")
@@ -582,7 +600,11 @@ func TestRefreshToken_Success(t *testing.T) {
 
 func TestProfile_Success(t *testing.T) {
 	mockService := new(mocks.AuthService)
-	handler := auth.AuthHandler{AuthService: mockService}
+	permSvc := permission.NewService(&stubPermissionRepo{})
+	handler := auth.AuthHandler{
+		AuthService:   mockService,
+		PermissionSvc: permSvc,
+	}
 
 	mockService.On("GetProfile", uint(1)).Return(&user.User{
 		Model: gorm.Model{ID: 1},
@@ -834,10 +856,10 @@ func TestBuildRouter_RejectsInvalidTrustedProxy(t *testing.T) {
 		Port:           "8080",
 		DatabaseURL:    "postgresql://postgres:password@localhost:5432/auth_db?sslmode=disable",
 		TrustedProxies: []string{"definitely-not-a-cidr"},
-		JWTSecret:      []byte("secret"),
+		JWTSecret:      []byte("super_secret_key_123_must_be_32_bytes_long_minimum"),
 	}
 
-	router, err := appsetup.BuildRouter(nil, cfg, services.NewJWTService([]byte("secret")))
+	router, err := appsetup.BuildRouter(nil, cfg, services.NewJWTService([]byte("super_secret_key_123_must_be_32_bytes_long_minimum")))
 
 	assert.Nil(t, router)
 	assert.Error(t, err)

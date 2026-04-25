@@ -62,6 +62,9 @@ func (s *stubUserRepository) Delete(id uint) error {
 	}
 	return nil
 }
+func (s *stubUserRepository) WithTx(_ *gorm.DB) user.Repository {
+	return s
+}
 
 type stubPermissionChecker struct {
 	hasPermission func(roleName, permission string) (bool, error)

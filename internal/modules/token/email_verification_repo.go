@@ -7,6 +7,7 @@ type EmailVerificationRepository interface {
 	FindByToken(token string) (*EmailVerificationToken, error)
 	DeleteByID(id uint) error
 	DeleteByUserID(userID uint) error
+	WithTx(tx *gorm.DB) EmailVerificationRepository
 }
 
 type GormEmailVerificationRepository struct {
@@ -38,4 +39,8 @@ func (r *GormEmailVerificationRepository) DeleteByID(id uint) error {
 
 func (r *GormEmailVerificationRepository) DeleteByUserID(userID uint) error {
 	return r.db.Where("user_id = ?", userID).Delete(&EmailVerificationToken{}).Error
+}
+
+func (r *GormEmailVerificationRepository) WithTx(tx *gorm.DB) EmailVerificationRepository {
+	return &GormEmailVerificationRepository{db: tx}
 }

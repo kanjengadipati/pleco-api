@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"go-api-starterkit/internal/modules/audit"
+	tokenModule "go-api-starterkit/internal/modules/token"
 	"go-api-starterkit/internal/services"
 
 	"golang.org/x/crypto/bcrypt"
@@ -12,12 +13,13 @@ import (
 )
 
 type Service struct {
-	UserRepo Repository
-	AuditSvc *audit.Service
+	UserRepo         Repository
+	RefreshTokenRepo tokenModule.RefreshTokenRepository
+	AuditSvc         *audit.Service
 }
 
-func NewService(userRepo Repository, auditSvc *audit.Service) *Service {
-	return &Service{UserRepo: userRepo, AuditSvc: auditSvc}
+func NewService(userRepo Repository, refreshRepo tokenModule.RefreshTokenRepository, auditSvc *audit.Service) *Service {
+	return &Service{UserRepo: userRepo, RefreshTokenRepo: refreshRepo, AuditSvc: auditSvc}
 }
 
 func (s *Service) GetAllUsers(page, limit int, search, role string) ([]User, int64, error) {
@@ -72,6 +74,7 @@ func (s *Service) UpdateUser(id uint, input UpdateUserRequest) (*User, error) {
 		return nil, err
 	}
 
+	oldRole := user.Role
 	user.Name = input.Name
 	user.Email = input.Email
 	user.Role = input.Role
@@ -79,6 +82,11 @@ func (s *Service) UpdateUser(id uint, input UpdateUserRequest) (*User, error) {
 
 	if err := s.UserRepo.Update(user); err != nil {
 		return nil, err
+	}
+
+	// If role changed, revoke all sessions to prevent stale role in JWT
+	if oldRole != user.Role {
+		_ = s.RefreshTokenRepo.DeleteByUser(user.ID)
 	}
 
 	return user, nil

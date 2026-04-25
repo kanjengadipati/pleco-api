@@ -2,6 +2,7 @@ package user
 
 import (
 	"go-api-starterkit/internal/modules/audit"
+	tokenModule "go-api-starterkit/internal/modules/token"
 
 	"gorm.io/gorm"
 )
@@ -14,7 +15,8 @@ type Module struct {
 
 func BuildModule(db *gorm.DB, auditSvc *audit.Service) *Module {
 	repository := NewRepository(db)
-	service := NewService(repository, auditSvc)
+	refreshRepo := tokenModule.NewRefreshTokenRepository(db)
+	service := NewService(repository, refreshRepo, auditSvc)
 	handler := NewHandler(service)
 
 	return &Module{

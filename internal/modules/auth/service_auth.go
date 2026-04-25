@@ -26,25 +26,11 @@ func (s *authService) Register(user *userModule.User, password string) error {
 	user.IsVerified = false
 
 	verificationToken := uuid.NewString()
-	if s.DB != nil {
-		if err := s.DB.Transaction(func(tx *gorm.DB) error {
-			if err := tx.Create(user).Error; err != nil {
-				return err
-			}
+	err = s.DB.Transaction(func(tx *gorm.DB) error {
+		txUserRepo := s.UserRepo.WithTx(tx)
+		txEmailRepo := s.EmailVerificationRepo.WithTx(tx)
 
-			verificationRecord := &tokenModule.EmailVerificationToken{
-				UserID:    user.ID,
-				Token:     verificationToken,
-				ExpiresAt: time.Now().Add(24 * time.Hour),
-				CreatedAt: time.Now(),
-			}
-
-			return tx.Create(verificationRecord).Error
-		}); err != nil {
-			return err
-		}
-	} else {
-		if err := s.UserRepo.Create(user); err != nil {
+		if err := txUserRepo.Create(user); err != nil {
 			return err
 		}
 
@@ -55,9 +41,10 @@ func (s *authService) Register(user *userModule.User, password string) error {
 			CreatedAt: time.Now(),
 		}
 
-		if err := s.EmailVerificationRepo.Create(verificationRecord); err != nil {
-			return err
-		}
+		return txEmailRepo.Create(verificationRecord)
+	})
+	if err != nil {
+		return err
 	}
 
 	if sendErr := s.EmailSvc.SendVerificationEmail(user.Email, verificationToken); sendErr != nil {

@@ -85,8 +85,8 @@ func (c AppConfig) Validate() error {
 		problems = append(problems, "DATABASE_URL is required")
 	}
 
-	if len(c.JWTSecret) == 0 {
-		problems = append(problems, "JWT_SECRET is required")
+	if len(c.JWTSecret) < 32 {
+		problems = append(problems, "JWT_SECRET must be at least 32 bytes for cryptographic strength")
 	}
 
 	port, err := strconv.Atoi(strings.TrimSpace(c.Port))
