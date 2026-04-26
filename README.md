@@ -5,7 +5,7 @@
 [![Gin](https://img.shields.io/badge/Gin-HTTP%20Framework-009688)](https://gin-gonic.com)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Database-336791?logo=postgresql)](https://www.postgresql.org)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)](https://www.docker.com)
-[![Modular](https://img.shields.io/badge/Architecture-Modular-6f42c1)](https://github.com/kanjengadipati/go-api-starterkit)
+[![Modular](https://img.shields.io/badge/Architecture-Modular-6f42c1)](https://github.com/kanjengadipati/placo-api)
 [![AI Powered](https://img.shields.io/badge/AI-Audit%20Investigator-ff6b35?logo=ollama)](https://ollama.com)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
@@ -806,8 +806,8 @@ go test ./...
 ### Manual Testing with Postman
 
 Included files:
-- Collection: [`go-api-starterkit.postman_collection.json`](postman/go-api-starterkit.postman_collection.json)
-- Environment: [`go-api-starterkit.local.postman_environment.json`](postman/go-api-starterkit.local.postman_environment.json)
+- Collection: [`placo-api.postman_collection.json`](postman/placo-api.postman_collection.json)
+- Environment: [`placo-api.local.postman_environment.json`](postman/placo-api.local.postman_environment.json)
 
 Recommended flow:
 

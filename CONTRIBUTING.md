@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for considering a contribution to `go-api-starterkit`.
+Thanks for considering a contribution to `placo-api`.
 
 ## Before You Start
 

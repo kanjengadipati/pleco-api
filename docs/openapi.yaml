@@ -1,9 +1,9 @@
 openapi: 3.0.3
 info:
-  title: Go API Starterkit API
+  title: Placo API
   version: 1.0.0
   description: |
-    OpenAPI reference for go-api-starterkit.
+    OpenAPI reference for placo-api.
 
     Most API responses use a standard envelope:
     - success: `status`, `message`, optional `data`, optional `meta`
@@ -11,7 +11,7 @@ info:
 servers:
   - url: http://localhost:8080
     description: Local development
-  - url: https://go-api-starterkit.onrender.com
+  - url: https://placo-api.onrender.com
     description: Production
 tags:
   - name: Health

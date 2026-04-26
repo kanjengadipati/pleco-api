@@ -1,5 +1,5 @@
 <svg width="100%" viewBox="0 0 680 590" xmlns="http://www.w3.org/2000/svg" role="img">
-  <title>Go API Starterkit — architecture</title>
+  <title>Placo — architecture</title>
   <desc>Layered architecture: Client → Nginx (optional) → Gin API → modules (auth, user, audit, role/permission) → services (JWT, email, AI provider) → infrastructure (PostgreSQL, Redis).</desc>
 
   <style>
