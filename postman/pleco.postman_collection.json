@@ -1,8 +1,8 @@
 {
   "info": {
-    "name": "Placo",
+    "name": "Pleco",
     "_postman_id": "4c4e63c5-d2a7-4c2b-bc63-0e9b6c9d3f6f",
-    "description": "Manual test collection for placo-api",
+    "description": "Manual test collection for pleco-api",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -70,29 +70,86 @@
   "item": [
     {
       "name": "Health",
-      "event": [
+      "item": [
         {
-          "listen": "test",
-          "script": {
-            "exec": [
-              "pm.test('status is 200', function () {",
-              "  pm.response.to.have.status(200);",
-              "});",
-              "pm.test('response contains ok status', function () {",
-              "  const json = pm.response.json();",
-              "  pm.expect(json.status).to.eql('success');",
-              "  pm.expect(json.data.status).to.eql('ok');",
-              "});"
-            ],
-            "type": "text/javascript"
+          "name": "Health (Legacy)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('response contains ok status', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.status).to.eql('success');",
+                  "  pm.expect(json.data.status).to.eql('ok');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/health"
+          }
+        },
+        {
+          "name": "Liveness Probe",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('response contains ok status', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.status).to.eql('success');",
+                  "  pm.expect(json.data.status).to.eql('ok');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/health/live"
+          }
+        },
+        {
+          "name": "Readiness Probe",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('response contains ok status', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.status).to.eql('success');",
+                  "  pm.expect(json.data.status).to.eql('ok');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/health/ready"
           }
         }
-      ],
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": "{{base_url}}/health"
-      }
+      ]
     },
     {
       "name": "Auth",

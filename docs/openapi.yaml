@@ -1,9 +1,9 @@
 openapi: 3.0.3
 info:
-  title: Placo API
+  title: Pleco API
   version: 1.0.0
   description: |
-    OpenAPI reference for placo-api.
+    OpenAPI reference for pleco-api.
 
     Most API responses use a standard envelope:
     - success: `status`, `message`, optional `data`, optional `meta`
@@ -11,7 +11,7 @@ info:
 servers:
   - url: http://localhost:8080
     description: Local development
-  - url: https://placo-api.onrender.com
+  - url: https://pleco-api.onrender.com
     description: Production
 tags:
   - name: Health
@@ -22,7 +22,7 @@ paths:
   /health:
     get:
       tags: [Health]
-      summary: Health check
+      summary: Health check (Legacy)
       responses:
         '200':
           description: Service is healthy
@@ -30,6 +30,36 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EnvelopeHealth'
+
+  /health/live:
+    get:
+      tags: [Health]
+      summary: Liveness probe
+      responses:
+        '200':
+          description: Service is running
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeHealth'
+
+  /health/ready:
+    get:
+      tags: [Health]
+      summary: Readiness probe
+      responses:
+        '200':
+          description: Service is ready and database is connected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeHealth'
+        '503':
+          description: Service is not ready or database is disconnected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeError'
 
   /auth/register:
     post:

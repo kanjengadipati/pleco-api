@@ -38,6 +38,25 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 	router.GET("/health", func(c *gin.Context) {
 		httpx.Success(c, 200, "Health check ok", gin.H{"status": "ok"}, nil)
 	})
+
+	router.GET("/health/live", func(c *gin.Context) {
+		httpx.Success(c, 200, "Service is live", gin.H{"status": "ok"}, nil)
+	})
+
+	router.GET("/health/ready", func(c *gin.Context) {
+		sqlDB, err := db.DB()
+		if err != nil {
+			httpx.Error(c, 503, "Database connection error")
+			return
+		}
+
+		if err := sqlDB.Ping(); err != nil {
+			httpx.Error(c, 503, "Database ping failed")
+			return
+		}
+
+		httpx.Success(c, 200, "Service is ready", gin.H{"status": "ok"}, nil)
+	})
 	return nil
 }
 

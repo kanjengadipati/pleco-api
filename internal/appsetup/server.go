@@ -1,6 +1,7 @@
 package appsetup
 
 import (
+	"net/http"
 	"pleco-api/internal/config"
 	"pleco-api/internal/services"
 
@@ -28,5 +29,10 @@ func RunAPI(registerDocs func(*gin.Engine)) error {
 		registerDocs(router)
 	}
 
-	return router.Run(":" + appConfig.Port)
+	srv := &http.Server{
+		Addr:    ":" + appConfig.Port,
+		Handler: router,
+	}
+
+	return srv.ListenAndServe()
 }

@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for considering a contribution to `placo-api`.
+Thanks for considering a contribution to `pleco-api`.
 
 ## Before You Start
 

@@ -1,7 +1,7 @@
 services:
   app:
     build: .
-    container_name: placo-api
+    container_name: pleco-api
     restart: always
     env_file:
       - .env.docker
