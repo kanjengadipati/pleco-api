@@ -1,13 +1,12 @@
-package utils
+package httpx
 
 import (
 	"fmt"
-	user "pleco-api/internal/modules/user"
 
 	"github.com/gin-gonic/gin"
 )
 
-// getUserIDFromContext safely extracts the user_id as uint from the Gin context.
+// GetUserIDFromContext safely extracts the user_id as uint from the Gin context.
 func GetUserIDFromContext(c *gin.Context) (uint, bool) {
 	val, exists := c.Get("user_id")
 	if !exists {
@@ -22,15 +21,6 @@ func GetUserIDFromContext(c *gin.Context) (uint, bool) {
 		return uint(v), true
 	default:
 		return 0, false
-	}
-}
-
-// dtoToUser converts registration fields to user.User (excluding hashed password).
-func DtoToUser(name, email string) user.User {
-	return user.User{
-		Name:  name,
-		Email: email,
-		Role:  "user",
 	}
 }
 
