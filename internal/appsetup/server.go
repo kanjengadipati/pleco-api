@@ -3,12 +3,17 @@ package appsetup
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
+	"os"
 	"os/signal"
+	"pleco-api/internal/ai"
 	"pleco-api/internal/config"
 	"pleco-api/internal/middleware"
 	"pleco-api/internal/services"
+	"pleco-api/internal/services/monitoring"
 	"syscall"
 	"time"
 
@@ -17,6 +22,9 @@ import (
 
 func RunAPI(registerDocs func(*gin.Engine)) error {
 	config.LoadEnv()
+
+	// Initialize structured logging
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
 
 	appConfig := config.LoadAppConfig()
 	if err := appConfig.Validate(); err != nil {
@@ -32,6 +40,36 @@ func RunAPI(registerDocs func(*gin.Engine)) error {
 	if err != nil {
 		return err
 	}
+
+	// Initialize monitoring
+	provider := os.Getenv("MONITORING_PROVIDER") // default: "none"
+	baseMonitor, err := monitoring.NewMonitor(provider)
+	if err != nil {
+		slog.Warn("Monitoring initialization failed, falling back to no-op", "error", err)
+		baseMonitor = &monitoring.NoOpMonitor{}
+	}
+	defer baseMonitor.Close()
+
+	var monitor monitoring.Monitor = baseMonitor
+	if os.Getenv("AI_MONITORING_ENABLED") == "true" {
+		aiService, _ := ai.NewService(appConfig.AI)
+		monitor = monitoring.NewAIMonitor(baseMonitor, aiService, db, true)
+	}
+
+	// Add monitoring middleware for error capture (5xx only)
+	router.Use(func(c *gin.Context) {
+		c.Next()
+
+		if c.Writer.Status() >= 500 {
+			err := fmt.Errorf(
+				"HTTP %d on %s %s",
+				c.Writer.Status(),
+				c.Request.Method,
+				c.Request.URL.Path,
+			)
+			monitor.CaptureException(err, c.Request.Context())
+		}
+	})
 
 	if registerDocs != nil {
 		registerDocs(router)
