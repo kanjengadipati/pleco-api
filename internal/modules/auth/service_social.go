@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"pleco-api/internal/config"
 	"pleco-api/internal/modules/audit"
 	permissionless "pleco-api/internal/modules/social"
 	userModule "pleco-api/internal/modules/user"
@@ -164,23 +165,28 @@ func (s *authService) resolveSocialProfile(provider string, token string) (*soci
 		return nil, normalizedProvider, errors.New("social token required")
 	}
 
+	providerCfg, active := s.SocialCfg.Providers[normalizedProvider]
+	if !active {
+		return nil, normalizedProvider, fmt.Errorf("%s social login is not enabled", normalizedProvider)
+	}
+
 	switch normalizedProvider {
 	case "google":
-		profile, err := s.validateGoogleToken(token)
+		profile, err := s.validateGoogleToken(token, providerCfg)
 		return profile, normalizedProvider, err
 	case "facebook":
-		profile, err := s.validateFacebookToken(token)
+		profile, err := s.validateFacebookToken(token, providerCfg)
 		return profile, normalizedProvider, err
 	case "apple":
-		profile, err := s.validateAppleToken(token)
+		profile, err := s.validateAppleToken(token, providerCfg)
 		return profile, normalizedProvider, err
 	default:
 		return nil, normalizedProvider, errors.New("unsupported provider")
 	}
 }
 
-func (s *authService) validateGoogleToken(token string) (*socialProfile, error) {
-	payload, err := idtoken.Validate(context.Background(), token, s.SocialCfg.GoogleClientID)
+func (s *authService) validateGoogleToken(token string, cfg config.SocialProviderConfig) (*socialProfile, error) {
+	payload, err := idtoken.Validate(context.Background(), token, cfg.ClientID)
 	if err != nil {
 		return nil, errors.New("invalid google token")
 	}
@@ -201,12 +207,8 @@ func (s *authService) validateGoogleToken(token string) (*socialProfile, error) 
 	}, nil
 }
 
-func (s *authService) validateFacebookToken(token string) (*socialProfile, error) {
-	if s.SocialCfg.FacebookAppID == "" || s.SocialCfg.FacebookAppSecret == "" {
-		return nil, errors.New("facebook social login not configured")
-	}
-
-	appToken := s.SocialCfg.FacebookAppID + "|" + s.SocialCfg.FacebookAppSecret
+func (s *authService) validateFacebookToken(token string, cfg config.SocialProviderConfig) (*socialProfile, error) {
+	appToken := cfg.ClientID + "|" + cfg.ClientSecret
 	debugURL := "https://graph.facebook.com/debug_token?" + url.Values{
 		"input_token":  {token},
 		"access_token": {appToken},
@@ -222,7 +224,7 @@ func (s *authService) validateFacebookToken(token string) (*socialProfile, error
 	if !debugResp.Data.IsValid || debugResp.Data.UserID == "" {
 		return nil, errors.New("invalid facebook token")
 	}
-	if debugResp.Data.AppID != s.SocialCfg.FacebookAppID {
+	if debugResp.Data.AppID != cfg.ClientID {
 		return nil, errors.New("facebook token audience mismatch")
 	}
 	if debugResp.Data.Type != "" && !strings.EqualFold(debugResp.Data.Type, "USER") {
@@ -250,10 +252,7 @@ func (s *authService) validateFacebookToken(token string) (*socialProfile, error
 	}, nil
 }
 
-func (s *authService) validateAppleToken(token string) (*socialProfile, error) {
-	if s.SocialCfg.AppleClientID == "" {
-		return nil, errors.New("apple social login not configured")
-	}
+func (s *authService) validateAppleToken(token string, cfg config.SocialProviderConfig) (*socialProfile, error) {
 
 	claims := jwt.MapClaims{}
 	parsedToken, err := jwt.ParseWithClaims(token, claims, func(incoming *jwt.Token) (interface{}, error) {
@@ -275,7 +274,7 @@ func (s *authService) validateAppleToken(token string) (*socialProfile, error) {
 	if issuer, _ := claims["iss"].(string); issuer != "https://appleid.apple.com" {
 		return nil, errors.New("invalid apple issuer")
 	}
-	if !claimMatchesAudience(claims["aud"], s.SocialCfg.AppleClientID) {
+	if !claimMatchesAudience(claims["aud"], cfg.ClientID) {
 		return nil, errors.New("apple token audience mismatch")
 	}
 

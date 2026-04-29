@@ -23,11 +23,14 @@ type EmailConfig struct {
 	FrontendURL    string
 }
 
+type SocialProviderConfig struct {
+	ClientID     string
+	ClientSecret string
+}
+
 type SocialConfig struct {
-	GoogleClientID    string
-	FacebookAppID     string
-	FacebookAppSecret string
-	AppleClientID     string
+	ActiveProviders []string
+	Providers       map[string]SocialProviderConfig
 }
 
 type AIConfig struct {
@@ -83,12 +86,7 @@ func LoadAppConfig() AppConfig {
 			AppBaseURL:     firstNonEmptyEnv("APP_BASE_URL", "RENDER_EXTERNAL_URL", "http://localhost:8080"),
 			FrontendURL:    GetEnv("FRONTEND_URL", ""),
 		},
-		Social: SocialConfig{
-			GoogleClientID:    GetEnv("GOOGLE_CLIENT_ID", ""),
-			FacebookAppID:     GetEnv("FACEBOOK_APP_ID", ""),
-			FacebookAppSecret: GetEnv("FACEBOOK_APP_SECRET", ""),
-			AppleClientID:     GetEnv("APPLE_CLIENT_ID", ""),
-		},
+		Social: loadSocialConfig(),
 		AI: AIConfig{
 			Enabled:        envBool("AI_ENABLED"),
 			Provider:       strings.ToLower(GetEnv("AI_PROVIDER", "mock")),
@@ -148,12 +146,14 @@ func (c AppConfig) Validate() error {
 		problems = append(problems, "EMAIL_TIMEOUT_SECONDS must be greater than 0 when email is enabled")
 	}
 
-	if c.Social.FacebookAppID != "" && c.Social.FacebookAppSecret == "" {
-		problems = append(problems, "FACEBOOK_APP_SECRET is required when FACEBOOK_APP_ID is set")
-	}
-
-	if c.Social.FacebookAppSecret != "" && c.Social.FacebookAppID == "" {
-		problems = append(problems, "FACEBOOK_APP_ID is required when FACEBOOK_APP_SECRET is set")
+	for _, p := range c.Social.ActiveProviders {
+		providerCfg := c.Social.Providers[p]
+		if providerCfg.ClientID == "" {
+			problems = append(problems, fmt.Sprintf("SOCIAL_%s_CLIENT_ID is required because %s is an active social provider", strings.ToUpper(p), p))
+		}
+		if p == "facebook" && providerCfg.ClientSecret == "" {
+			problems = append(problems, "SOCIAL_FACEBOOK_CLIENT_SECRET is required because facebook is an active social provider")
+		}
 	}
 
 	if c.AutoRunSeeds && (c.AdminEmail == "" || c.AdminPassword == "") {
@@ -263,4 +263,23 @@ func corsAllowedOrigins() []string {
 	}
 
 	return envList("CORS_ALLOWED_ORIGINS", defaults)
+}
+
+func loadSocialConfig() SocialConfig {
+	activeProviders := envList("SOCIAL_ACTIVE_PROVIDERS", nil)
+	providers := make(map[string]SocialProviderConfig)
+
+	for _, p := range activeProviders {
+		p = strings.ToLower(p)
+		prefix := "SOCIAL_" + strings.ToUpper(p) + "_"
+		providers[p] = SocialProviderConfig{
+			ClientID:     GetEnv(prefix+"CLIENT_ID", ""),
+			ClientSecret: GetEnv(prefix+"CLIENT_SECRET", ""),
+		}
+	}
+
+	return SocialConfig{
+		ActiveProviders: activeProviders,
+		Providers:       providers,
+	}
 }

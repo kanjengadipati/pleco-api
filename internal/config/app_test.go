@@ -41,7 +41,12 @@ func TestAppConfigValidateRejectsPartialProviderConfiguration(t *testing.T) {
 			APIKey:   "sg-key",
 		},
 		Social: SocialConfig{
-			FacebookAppID: "fb-app-id",
+			ActiveProviders: []string{"facebook"},
+			Providers: map[string]SocialProviderConfig{
+				"facebook": {
+					ClientID: "fb-app-id",
+				},
+			},
 		},
 	}
 
@@ -52,7 +57,7 @@ func TestAppConfigValidateRejectsPartialProviderConfiguration(t *testing.T) {
 
 	message := err.Error()
 	assertContains(t, message, "EMAIL_FROM is required when EMAIL_PROVIDER is sendgrid")
-	assertContains(t, message, "FACEBOOK_APP_SECRET is required when FACEBOOK_APP_ID is set")
+	assertContains(t, message, "SOCIAL_FACEBOOK_CLIENT_SECRET is required because facebook is an active social provider")
 }
 
 func TestAppConfigValidateRejectsUnsupportedEmailProvider(t *testing.T) {
