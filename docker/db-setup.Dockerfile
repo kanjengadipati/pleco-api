@@ -1,10 +1,9 @@
+FROM migrate/migrate:v4.17.0 AS migrate
+
 FROM golang:1.25-alpine
 
 WORKDIR /app
 
-RUN apk add --no-cache make curl \
-	&& curl -L https://github.com/golang-migrate/migrate/releases/download/v4.17.0/migrate.linux-amd64.tar.gz \
-	| tar xvz \
-	&& mv migrate /usr/local/bin/migrate
+COPY --from=migrate /usr/local/bin/migrate /usr/local/bin/migrate
 
-CMD ["make", "db-setup"]
+CMD ["sh", "-c", "migrate -path migrations -database \"$DATABASE_URL\" up && go run ./cmd/seed"]

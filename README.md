@@ -21,19 +21,28 @@ Intended for Go backend developers who want a solid, security-conscious auth fou
 
 ## Overview
 
-This project provides a complete authentication and authorization foundation built with Go, Gin, GORM, and PostgreSQL. It is structured around independent, domain-focused modules that can be extended or replaced without touching the rest of the app.
+Pleco is a production-oriented authentication and authorization API foundation for Go applications. It gives you the core auth system most products need: JWT login, refresh token rotation, per-device sessions, email verification, password recovery, social login, RBAC, admin user management, audit logging, and optional AI-assisted audit investigation.
 
-**Core features:**
+The codebase is organized around domain-focused modules, so auth, users, roles, permissions, tokens, social login, audit logs, and monitoring can evolve independently. Each module owns its handler, service, repository, and model, making the project easier to extend than a single large auth package.
+
+Pleco is designed for teams who want a practical starting point for a real backend: secure defaults, PostgreSQL migrations, Redis-backed rate limiting, structured logging, Docker Compose for local development, and deployment-friendly configuration.
+
+**Authentication:**
 - User registration and login
 - Access token and refresh token flow with token rotation
-- Per-device session management — list, revoke, and logout individual sessions
+- Per-device session management - list, revoke, and logout individual sessions
 - Self profile update and password change
 - Email verification, forgot password, and reset password
-- Google, Facebook, and Apple social login (server-side token validation)
-- Admin user management
-- Audit trail for all important auth and user actions
-- Optional AI-powered audit log investigator (Ollama, OpenAI, Gemini, or mock)
+- Google, Facebook, and Apple social login with server-side token validation
+
+**Authorization and admin:**
 - Role-based access control (RBAC) with fine-grained permission checks per route
+- Admin user management
+- Token invalidation after password resets, password changes, and role changes
+
+**Security and operations:**
+- Audit trail for important auth and user actions
+- Optional AI-powered audit log investigator (Ollama, OpenAI, Gemini, or mock)
 - Per-route rate limiting with a swappable store abstraction
 - Hardened security headers (CSP, HSTS, X-Frame-Options, X-Content-Type-Options)
 - Request-scoped structured logging with request ID propagation
