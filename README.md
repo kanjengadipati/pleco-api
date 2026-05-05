@@ -805,7 +805,7 @@ The API will be available at `http://localhost:8080`. The app respects the `PORT
 
 ## Docker Workflow
 
-The Docker setup includes an application container, PostgreSQL, Redis, Nginx gateway, and a `db-setup` container that handles migrations and seeding.
+The Docker setup includes an application container, optional PgBouncer connection pooling, PostgreSQL, Redis, Nginx gateway, and a `db-setup` container that handles migrations and seeding.
 
 ```bash
 # Start the full stack
@@ -818,7 +818,9 @@ make docker-logs
 make docker-rebuild
 ```
 
-The gateway is exposed at `http://localhost`. The Nginx layer is optional — the app can run directly without it.
+The gateway is exposed at `http://localhost`. The Nginx layer is optional - the app can run directly without it.
+
+PgBouncer is included in Docker as a production-like pooling layer for scalable deployments. In this stack, API traffic uses PgBouncer at `pgbouncer:5432`, while the `db-setup` container connects directly to Postgres for migrations and seed data. For simple local development or small deployments, Pleco can still connect directly to PostgreSQL with a normal `DATABASE_URL`.
 
 ---
 
