@@ -38,11 +38,38 @@ make docker-up
 
 ## Development Guidelines
 
-- Follow the existing modular structure under `modules/`.
+- Follow the existing modular structure under `internal/modules/`.
 - Keep API responses consistent with the project response envelope.
 - Prefer clear, explicit dependency wiring over hidden globals.
 - Add or update tests when changing behavior.
 - Update README, OpenAPI, and Postman assets when public API behavior changes.
+
+## Module Structure
+
+New business domains should live under `internal/modules/<domain>/` and follow the existing handler-service-repository shape. Keep module code focused on one domain so auth, users, roles, permissions, tokens, social login, audit, and future modules can evolve independently.
+
+Expected files for a typical module:
+
+```text
+internal/modules/<domain>/
+├── dto.go          # request and response DTOs
+├── handler.go      # HTTP handlers and response mapping
+├── model.go        # GORM/domain models
+├── module.go       # dependency wiring for the module
+├── repository.go   # database access behind an interface
+├── routes.go       # route registration
+└── service.go      # business logic
+```
+
+Small modules may omit files they do not need, but keep the same ownership boundaries:
+
+- Handlers parse HTTP input and return envelope responses.
+- Services own business rules, transactions, cache invalidation, and cross-module orchestration.
+- Repositories own persistence queries and expose interfaces for testing.
+- DTOs keep public API shapes separate from database models.
+- Routes register endpoints and middleware close to the module they belong to.
+
+When adding a module, wire it from `internal/appsetup/`, add migrations when schema changes, add tests for meaningful behavior, and update README, OpenAPI, and Postman assets if the public API changes.
 
 ## Quality Checks
 
