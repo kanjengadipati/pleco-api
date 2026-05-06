@@ -148,6 +148,7 @@ Copy one of the example files depending on your workflow:
 ### Common Variables
 
 ```env
+PORT=8080
 DATABASE_URL=postgresql://postgres:password@localhost:5432/auth_db?sslmode=disable
 TRUSTED_PROXIES=127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
 CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
@@ -169,15 +170,24 @@ EMAIL_SMTP_PORT=587
 EMAIL_SMTP_USERNAME=
 EMAIL_SMTP_PASSWORD=
 EMAIL_SMTP_MODE=starttls
-GOOGLE_CLIENT_ID=
-FACEBOOK_APP_ID=
-FACEBOOK_APP_SECRET=
-APPLE_CLIENT_ID=
+REDIS_URL=
+REDIS_HOST=
+REDIS_PORT=6379
+REDIS_PASSWORD=
+REDIS_DB=0
+SOCIAL_ACTIVE_PROVIDERS=
+SOCIAL_GOOGLE_CLIENT_ID=
+SOCIAL_GOOGLE_CLIENT_SECRET=
+SOCIAL_FACEBOOK_CLIENT_ID=
+SOCIAL_FACEBOOK_CLIENT_SECRET=
+SOCIAL_APPLE_CLIENT_ID=
+SOCIAL_APPLE_CLIENT_SECRET=
 AI_ENABLED=false
 AI_PROVIDER=mock
 AI_MODEL=mock-model
 AI_BASE_URL=
 AI_API_KEY=
+AI_TIMEOUT_SECONDS=30
 ```
 
 ### Notes
@@ -191,9 +201,9 @@ AI_API_KEY=
 - `smtp` is the most flexible option and works with any standard SMTP relay.
 - `EMAIL_API_KEY`, `EMAIL_API_BASE_URL`, `EMAIL_FROM`, `EMAIL_FROM_NAME`, and `EMAIL_REPLY_TO` are the shared API-provider settings.
 - `EMAIL_SMTP_HOST`, `EMAIL_SMTP_PORT`, `EMAIL_SMTP_USERNAME`, `EMAIL_SMTP_PASSWORD`, and `EMAIL_SMTP_MODE` are used when `EMAIL_PROVIDER=smtp`.
-- `GOOGLE_CLIENT_ID` is optional but recommended so Google token validation checks the audience claim.
-- `FACEBOOK_APP_ID` and `FACEBOOK_APP_SECRET` are required for Facebook social login.
-- `APPLE_CLIENT_ID` is required for Sign in with Apple token validation.
+- `SOCIAL_ACTIVE_PROVIDERS` enables configured providers such as `google,facebook,apple`.
+- `SOCIAL_GOOGLE_CLIENT_ID`, `SOCIAL_FACEBOOK_CLIENT_ID`, and `SOCIAL_APPLE_CLIENT_ID` are used for provider audience validation.
+- `SOCIAL_FACEBOOK_CLIENT_SECRET` is required for Facebook token inspection when Facebook is active.
 - `AI_ENABLED=false` keeps the app fully usable without AI.
 - `AI_PROVIDER` supports `mock`, `ollama`, `openai`, and `gemini`.
 - `AI_BASE_URL` is only required when `AI_PROVIDER=ollama`.
@@ -274,14 +284,14 @@ AI_TIMEOUT_SECONDS=30
 
 1. Query audit logs with `GET /auth/admin/audit-logs`
 2. Narrow the result with filters: `resource`, `status`, `actor_user_id`, `search`, `date_from`, `date_to`
-3. Send the same filter scope to `POST /auth/admin/audit-logs/investigate`
+3. Send the same filter scope to `POST /auth/admin/audit-logs/investigations`
 4. Review the generated summary and recommendations
 5. Re-open saved investigation history from `GET /auth/admin/audit-logs/investigations`
 
 ### Investigation Request
 
 ```json
-POST /auth/admin/audit-logs/investigate
+POST /auth/admin/audit-logs/investigations
 
 {
   "action": "login",
@@ -299,19 +309,32 @@ POST /auth/admin/audit-logs/investigate
 
 ```json
 {
-  "summary": "Multiple failed login attempts were clustered in a short time window.",
-  "timeline": [
-    "2026-04-20T08:00:00Z failed login attempt from 10.0.0.10",
-    "2026-04-20T08:03:00Z repeated failure from the same IP"
-  ],
-  "suspicious_signals": [
-    "high number of failed auth events from one IP",
-    "repeated attempts against the same resource"
-  ],
-  "recommendations": [
-    "review the source IP",
-    "consider temporary blocking or tighter rate limiting"
-  ]
+  "status": "success",
+  "message": "Audit investigation completed",
+  "data": {
+    "summary": "Multiple failed login attempts were clustered in a short time window.",
+    "timeline": [
+      "2026-04-20T08:00:00Z failed login attempt from 10.0.0.10",
+      "2026-04-20T08:03:00Z repeated failure from the same IP"
+    ],
+    "suspicious_signals": [
+      "high number of failed auth events from one IP",
+      "repeated attempts against the same resource"
+    ],
+    "recommendations": [
+      "review the source IP",
+      "consider temporary blocking or tighter rate limiting"
+    ]
+  },
+  "meta": {
+    "investigation_id": 12,
+    "reused_existing": false,
+    "log_count": 42,
+    "limit": 50,
+    "resource": "auth",
+    "action": "login",
+    "status": "failed"
+  }
 }
 ```
 
@@ -350,6 +373,7 @@ POST /auth/admin/audit-logs/investigate
 | POST | `/auth/reset-password` | Reset password with token |
 | POST | `/auth/social-login` | Login via Google, Facebook, or Apple |
 | GET | `/auth/profile` | Get current user profile |
+| GET | `/auth/social/:provider/account` | Get linked social account |
 | PATCH | `/auth/profile` | Update profile |
 | PATCH | `/auth/change-password` | Change password |
 | GET | `/auth/sessions` | List active sessions |
@@ -364,6 +388,7 @@ POST /auth/admin/audit-logs/investigate
 |---|---|---|
 | GET | `/auth/admin/users` | List users |
 | GET | `/auth/admin/users/:id` | Get user by ID |
+| GET | `/auth/admin/users/:id/permissions` | Get user permissions |
 | POST | `/auth/admin/users` | Create user |
 | PUT | `/auth/admin/users/:id` | Update user |
 | DELETE | `/auth/admin/users/:id` | Delete user |
@@ -373,6 +398,7 @@ POST /auth/admin/audit-logs/investigate
 | GET | `/auth/admin/audit-logs/investigations` | List saved investigations |
 | GET | `/auth/admin/audit-logs/investigations/:id` | Get investigation detail |
 | GET | `/auth/admin/roles` | List roles |
+| GET | `/auth/admin/roles/:id` | Get role by ID |
 | GET | `/auth/admin/permissions` | List permissions |
 | GET | `/auth/admin/roles/:id/permissions` | Get role permissions |
 | PUT | `/auth/admin/roles/:id/permissions` | Update role permissions |
@@ -468,7 +494,10 @@ Response:
     "id": 1,
     "name": "Tester",
     "email": "tester@example.com",
-    "role": "user"
+    "role": "user",
+    "permissions": [
+      "user.read"
+    ]
   }
 }
 ```
@@ -622,6 +651,13 @@ curl -X POST "$BASE_URL/auth/social-login" \
   }'
 ```
 
+Fetch a linked social account:
+
+```bash
+curl -X GET "$BASE_URL/auth/social/google/account" \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
 ### Sessions
 
 List active sessions:
@@ -675,6 +711,10 @@ curl -X GET "$BASE_URL/auth/admin/users?page=1&limit=10" \
 curl -X GET "$BASE_URL/auth/admin/users/1" \
   -H "Authorization: Bearer $ACCESS_TOKEN"
 
+# Get user permissions
+curl -X GET "$BASE_URL/auth/admin/users/1/permissions" \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+
 # Create user
 curl -X POST "$BASE_URL/auth/admin/users" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
@@ -708,6 +748,10 @@ curl -X DELETE "$BASE_URL/auth/admin/users/1" \
 ```bash
 # List roles
 curl -X GET "$BASE_URL/auth/admin/roles" \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+
+# Get role by ID
+curl -X GET "$BASE_URL/auth/admin/roles/2" \
   -H "Authorization: Bearer $ACCESS_TOKEN"
 
 # List permissions
@@ -749,7 +793,7 @@ curl -X GET "$BASE_URL/auth/admin/audit-logs/export?resource=auth&status=failed"
 
 ```bash
 # Run an AI investigation over a filtered log window
-curl -X POST "$BASE_URL/auth/admin/audit-logs/investigate" \
+curl -X POST "$BASE_URL/auth/admin/audit-logs/investigations" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -1041,7 +1085,7 @@ The user was registered but the verification email was not clicked. Either:
 - Resend with `POST /auth/resend-verification` and a JSON email body
 - Or set `is_verified = true` directly in the database for development
 
-**`ai investigator is not enabled` on `/auth/admin/audit-logs/investigate`**
+**`ai investigator is not enabled` on `/auth/admin/audit-logs/investigations`**
 
 `AI_ENABLED` is `false` in your environment. Set `AI_ENABLED=true`, choose a provider, and restart the server. For quick testing, use `AI_PROVIDER=mock`.
 
@@ -1065,9 +1109,6 @@ go run ./cmd/migrate
 
 ## Roadmap Ideas
 
-- Redis-backed rate limit store for multi-instance deployments
-- Readiness and liveness probe endpoints
-- Database-backed integration tests
 - CI validation for migration smoke checks
 - Refresh token family tracking to detect token theft
 

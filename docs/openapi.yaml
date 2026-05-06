@@ -17,6 +17,8 @@ tags:
   - name: Health
   - name: Auth
   - name: User
+  - name: Role
+  - name: Permission
   - name: Audit
 paths:
   /health:
@@ -174,6 +176,108 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '200':
+          description: Password updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeMessage'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/EnvelopeError'
+                  - $ref: '#/components/schemas/EnvelopeValidationError'
+
+  /auth/verify:
+    get:
+      tags: [Auth]
+      summary: Verify an email address with a verification token
+      parameters:
+        - in: query
+          name: token
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Email verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeMessage'
+        '400':
+          description: Missing or invalid verification token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeError'
+
+  /auth/resend-verification:
+    post:
+      tags: [Auth]
+      summary: Resend an email verification link
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailRequest'
+      responses:
+        '200':
+          description: Verification email resent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeMessage'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/EnvelopeError'
+                  - $ref: '#/components/schemas/EnvelopeValidationError'
+
+  /auth/forgot-password:
+    post:
+      tags: [Auth]
+      summary: Request a password reset link
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailRequest'
+      responses:
+        '200':
+          description: Reset link sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeMessage'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/EnvelopeError'
+                  - $ref: '#/components/schemas/EnvelopeValidationError'
+
+  /auth/reset-password:
+    post:
+      tags: [Auth]
+      summary: Reset a password with a reset token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
       responses:
         '200':
           description: Password updated
@@ -356,9 +460,42 @@ paths:
                   - $ref: '#/components/schemas/EnvelopeError'
                   - $ref: '#/components/schemas/EnvelopeValidationError'
 
+  /auth/social/{provider}/account:
+    get:
+      tags: [Auth]
+      summary: Get the current user's linked social account for a provider
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: provider
+          required: true
+          schema:
+            type: string
+            enum: [google, facebook, apple]
+      responses:
+        '200':
+          description: Social account fetched
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeSocialAccount'
+        '400':
+          description: Unsupported provider or bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeError'
+        '404':
+          description: Social account not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeError'
+
   /auth/admin/roles:
     get:
-      tags: [User]
+      tags: [Role]
       summary: List all roles
       security:
         - bearerAuth: []
@@ -370,9 +507,37 @@ paths:
               schema:
                 $ref: '#/components/schemas/EnvelopeRoles'
 
+  /auth/admin/roles/{id}:
+    get:
+      tags: [Role]
+      summary: Get a role by id
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/UserID'
+      responses:
+        '200':
+          description: Role fetched
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeRole'
+        '400':
+          description: Invalid role id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeError'
+        '404':
+          description: Role not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeError'
+
   /auth/admin/permissions:
     get:
-      tags: [User]
+      tags: [Permission]
       summary: List all permissions
       security:
         - bearerAuth: []
@@ -386,7 +551,7 @@ paths:
 
   /auth/admin/roles/{id}/permissions:
     get:
-      tags: [User]
+      tags: [Role]
       summary: Get a role with its permission list
       security:
         - bearerAuth: []
@@ -406,7 +571,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/EnvelopeError'
     put:
-      tags: [User]
+      tags: [Role]
       summary: Replace the permission set for a role
       security:
         - bearerAuth: []
@@ -591,6 +756,34 @@ paths:
               schema:
                 $ref: '#/components/schemas/EnvelopeError'
 
+  /auth/admin/users/{id}/permissions:
+    get:
+      tags: [User]
+      summary: Get a user's effective permissions
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/UserID'
+      responses:
+        '200':
+          description: User permissions fetched
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeUserPermissions'
+        '400':
+          description: Invalid user id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeError'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeError'
+
   /auth/admin/audit-logs:
     get:
       tags: [Audit]
@@ -734,7 +927,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/EnvelopeError'
 
-  /auth/admin/audit-logs/investigations:
     get:
       tags: [Audit]
       summary: List saved audit investigations
@@ -871,9 +1063,25 @@ components:
       properties:
         refresh_token:
           type: string
+    EmailRequest:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+    ResetPasswordRequest:
+      type: object
+      required: [token, new_password]
+      properties:
+        token:
+          type: string
+        new_password:
+          type: string
+          format: password
     SocialLoginRequest:
       type: object
-      required: [provider, token]
+      required: [provider]
       properties:
         provider:
           type: string
@@ -967,6 +1175,19 @@ components:
           type: integer
         name:
           type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    RoleDetails:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
     Permission:
       type: object
       properties:
@@ -1025,8 +1246,44 @@ components:
           type: string
         role:
           type: string
+        role_id:
+          type: integer
+        role_details:
+          $ref: '#/components/schemas/RoleDetails'
         is_verified:
           type: boolean
+        last_login_at:
+          type: string
+          format: date-time
+          nullable: true
+        last_password_change_at:
+          type: string
+          format: date-time
+          nullable: true
+    UserPermissions:
+      type: object
+      properties:
+        id:
+          type: integer
+        role:
+          type: string
+        permissions:
+          type: array
+          items:
+            type: string
+    SocialAccount:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        provider:
+          type: string
+        provider_user_id:
+          type: string
+        avatar_url:
+          type: string
     AuditLog:
       type: object
       properties:
@@ -1207,6 +1464,16 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Role'
+    EnvelopeRole:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/Role'
     EnvelopePermissions:
       type: object
       properties:
@@ -1229,6 +1496,26 @@ components:
           type: string
         data:
           $ref: '#/components/schemas/RolePermissions'
+    EnvelopeUserPermissions:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/UserPermissions'
+    EnvelopeSocialAccount:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/SocialAccount'
     EnvelopeProfile:
       type: object
       properties:
@@ -1248,6 +1535,10 @@ components:
               type: string
             role:
               type: string
+            permissions:
+              type: array
+              items:
+                type: string
     EnvelopeUser:
       type: object
       properties:
@@ -1344,6 +1635,8 @@ components:
               type: string
             investigation_id:
               type: integer
+            reused_existing:
+              type: boolean
     EnvelopeAuditInvestigationHistoryList:
       type: object
       properties:
