@@ -675,13 +675,13 @@ paths:
                 $ref: '#/components/schemas/EnvelopeError'
 
   /auth/admin/users/{id}:
+    parameters:
+      - $ref: '#/components/parameters/UserID'
     get:
       tags: [User]
       summary: Get user by id
       security:
         - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/UserID'
       responses:
         '200':
           description: User fetched
@@ -706,8 +706,6 @@ paths:
       summary: Update user as admin
       security:
         - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/UserID'
       requestBody:
         required: true
         content:
@@ -734,8 +732,6 @@ paths:
       summary: Delete user as admin
       security:
         - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/UserID'
       responses:
         '200':
           description: User deleted
