@@ -11,6 +11,8 @@ info:
 servers:
   - url: http://localhost:8080
     description: Local development
+  - url: http://localhost
+    description: Docker Compose gateway
   - url: https://pleco-api.onrender.com
     description: Production
 tags:
