@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"log"
 	"time"
 
@@ -67,31 +68,84 @@ func (s *authService) Register(user *userModule.User, password string) error {
 }
 
 func (s *authService) Login(email, password, deviceID, userAgent, ipAddress string) (*AuthTokens, error) {
-	user, err := s.UserRepo.FindByEmail(email)
-	if err != nil {
+	ctx := context.Background()
+	attemptKey := "login_attempts:" + email
+
+	type loginAttempt struct {
+		Count        int       `json:"count"`
+		LockoutUntil time.Time `json:"lockout_until"`
+	}
+
+	var attempt loginAttempt
+	if s.Cache != nil {
+		ok, _ := s.Cache.GetJSON(ctx, attemptKey, &attempt)
+		if ok && time.Now().Before(attempt.LockoutUntil) {
+			s.AuditSvc.SafeRecord(audit.RecordInput{
+				Action:      "login",
+				Resource:    "auth",
+				Status:      "failed",
+				Description: "account locked due to too many failed attempts",
+				IPAddress:   ipAddress,
+				UserAgent:   userAgent,
+			})
+			return nil, ErrAccountLocked
+		}
+	}
+
+	recordFailedAttempt := func(userID *uint) {
+		if s.Cache == nil {
+			return
+		}
+		attempt.Count++
+		var lockoutDuration time.Duration
+		switch {
+		case attempt.Count < 4:
+			lockoutDuration = 0
+		case attempt.Count == 4:
+			lockoutDuration = 1 * time.Minute
+		case attempt.Count == 5:
+			lockoutDuration = 5 * time.Minute
+		case attempt.Count == 6:
+			lockoutDuration = 15 * time.Minute
+		default:
+			lockoutDuration = 30 * time.Minute
+		}
+
+		ttl := lockoutDuration
+		if ttl == 0 {
+			ttl = 5 * time.Minute
+		} else {
+			attempt.LockoutUntil = time.Now().Add(lockoutDuration)
+			ttl = lockoutDuration + 5*time.Minute
+		}
+
+		_ = s.Cache.SetJSON(ctx, attemptKey, attempt, ttl)
+
 		s.AuditSvc.SafeRecord(audit.RecordInput{
+			ActorUserID: userID,
 			Action:      "login",
 			Resource:    "auth",
+			ResourceID:  userID,
 			Status:      "failed",
 			Description: "invalid credentials",
 			IPAddress:   ipAddress,
 			UserAgent:   userAgent,
 		})
+	}
+
+	user, err := s.UserRepo.FindByEmail(email)
+	if err != nil {
+		recordFailedAttempt(nil)
 		return nil, ErrInvalidCredentials
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
-		s.AuditSvc.SafeRecord(audit.RecordInput{
-			ActorUserID: &user.ID,
-			Action:      "login",
-			Resource:    "auth",
-			ResourceID:  &user.ID,
-			Status:      "failed",
-			Description: "invalid credentials",
-			IPAddress:   ipAddress,
-			UserAgent:   userAgent,
-		})
+		recordFailedAttempt(&user.ID)
 		return nil, ErrInvalidCredentials
+	}
+
+	if s.Cache != nil {
+		_ = s.Cache.Delete(ctx, attemptKey)
 	}
 
 	if !user.IsVerified {
