@@ -1,6 +1,9 @@
 # Pleco
 ## Ship your product. Let Pleco handle the auth.
 
+- Setup guide: [INSTALLATION.md](./INSTALLATION.md)
+- Common issues: [TROUBLESHOOTING.md](./TROUBLESHOOTING.md)
+
 <img src="https://pleco-console.vercel.app/logo.png" alt="Pleco Logo" width="120" />
 
 [![Go](https://img.shields.io/badge/Go-1.25+-00ADD8?logo=go)](https://go.dev)
@@ -106,6 +109,10 @@ make test
 # or
 go test ./...
 ```
+
+### Releases
+
+Tagged releases publish prebuilt binary bundles for Linux, macOS, and Windows. Each archive includes the `api`, `migrate`, and `seed` executables together with the setup and troubleshooting docs so you can bootstrap a host without compiling Go on the target machine.
 
 ---
 
