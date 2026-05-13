@@ -136,7 +136,7 @@ func TestAppConfigValidateRejectsUnsupportedAIProvider(t *testing.T) {
 		t.Fatal("expected validation error, got nil")
 	}
 
-	assertContains(t, err.Error(), "AI_PROVIDER must be one of: mock, ollama, openai, gemini")
+	assertContains(t, err.Error(), "AI_PROVIDER must be one of: mock, ollama, openai, gemini, anthropic")
 }
 
 func TestAppConfigValidateRejectsInvalidAITimeout(t *testing.T) {
@@ -166,6 +166,7 @@ func TestAppConfigValidateRequiresAPIKeyForOpenAIAndGemini(t *testing.T) {
 	}{
 		{name: "openai", provider: "openai"},
 		{name: "gemini", provider: "gemini"},
+		{name: "anthropic", provider: "anthropic"},
 	}
 
 	for _, tc := range testCases {

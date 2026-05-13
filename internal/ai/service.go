@@ -39,6 +39,8 @@ func NewService(cfg config.AIConfig) (*Service, error) {
 		service.provider = NewOpenAIProvider(cfg.BaseURL, cfg.APIKey, time.Duration(cfg.TimeoutSeconds)*time.Second)
 	case "gemini":
 		service.provider = NewGeminiProvider(cfg.BaseURL, cfg.APIKey, time.Duration(cfg.TimeoutSeconds)*time.Second)
+	case "anthropic":
+		service.provider = NewAnthropicProvider(cfg.BaseURL, cfg.APIKey, time.Duration(cfg.TimeoutSeconds)*time.Second)
 	default:
 		return nil, errors.New("unsupported ai provider")
 	}

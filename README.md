@@ -214,7 +214,7 @@ AI_TIMEOUT_SECONDS=30
 - `SOCIAL_GOOGLE_CLIENT_ID`, `SOCIAL_FACEBOOK_CLIENT_ID`, and `SOCIAL_APPLE_CLIENT_ID` are used for provider audience validation.
 - `SOCIAL_FACEBOOK_CLIENT_SECRET` is required for Facebook token inspection when Facebook is active.
 - `AI_ENABLED=false` keeps the app fully usable without AI.
-- `AI_PROVIDER` supports `mock`, `ollama`, `openai`, and `gemini`.
+- `AI_PROVIDER` supports `mock`, `ollama`, `openai`, `gemini`, and `anthropic`.
 - `AI_BASE_URL` is only required when `AI_PROVIDER=ollama`.
 - `REDIS_URL` or `REDIS_HOST`/`REDIS_PORT` enables shared Redis-backed rate limiting and response caching. Without Redis, the app falls back to in-memory stores for local single-instance development.
 - `AUTO_RUN_MIGRATIONS` and `AUTO_RUN_SEEDS` are optional flags for startup-time initialization. Keep these `false` for local and Docker workflows — run migrations and seeds manually instead.
@@ -286,6 +286,16 @@ AI_ENABLED=true
 AI_PROVIDER=gemini
 AI_MODEL=gemini-2.5-flash
 AI_API_KEY=your_gemini_api_key
+AI_TIMEOUT_SECONDS=30
+```
+
+For Claude via Anthropic:
+
+```env
+AI_ENABLED=true
+AI_PROVIDER=anthropic
+AI_MODEL=claude-sonnet-4-5
+AI_API_KEY=your_anthropic_api_key
 AI_TIMEOUT_SECONDS=30
 ```
 
@@ -363,6 +373,7 @@ POST /auth/admin/audit-logs/investigations
 | `ollama model is not available` | Model not pulled | Run `ollama pull <model>` |
 | `openai error: bad api key` | Invalid or missing OpenAI API key | Set `AI_API_KEY` to a valid OpenAI key |
 | `gemini error: unsupported model` | Wrong Gemini model name | Use a supported model such as `gemini-2.5-flash` |
+| `anthropic error: bad api key` | Invalid or missing Anthropic API key | Set `AI_API_KEY` to a valid Anthropic key |
 | `ai investigation timed out` | Model too slow | Increase `AI_TIMEOUT_SECONDS` or use a smaller model |
 
 ---

@@ -91,7 +91,7 @@ Pleco uses those values when building verification and recovery links.
 Checks:
 
 - Confirm `AI_ENABLED=true`
-- Confirm `AI_PROVIDER` is one of `mock`, `ollama`, `openai`, or `gemini`
+- Confirm `AI_PROVIDER` is one of `mock`, `ollama`, `openai`, `gemini`, or `anthropic`
 - If using Ollama, confirm `AI_BASE_URL` is reachable and the model is installed
 - If using OpenAI or Gemini, confirm `AI_API_KEY` is present and valid
 
